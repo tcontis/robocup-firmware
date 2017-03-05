@@ -13,3 +13,6 @@
 [submodule "external/style-configs"]
 	path = external/style-configs
 	url = https://github.com/RoboJackets/style-configs.git
+[submodule "external/nanopb"]
+	path = external/nanopb
+	url = git@github.com:ashaw596/nanopb.git

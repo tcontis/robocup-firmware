@@ -58,6 +58,12 @@ find_package(SDL REQUIRED)
 include_directories("${PROJECT_SOURCE_DIR}/common") # for headers in common/
 include_directories("${PROJECT_BINARY_DIR}/common") # for generated protobuf headers
 
+include_directories("${PROJECT_SOURCE_DIR}/external/nanopb") # for headers in common/
+include_directories("${CMAKE_BINARY_DIR}/external/nanopb") # for generated protobuf headers
+
+set(NANOPB_CPP_PLUGIN "${PROJECT_SOURCE_DIR}/external/nanopb/generator/protoc-gen-nanopb")
+
 # run all the other CMakeLists files
+add_subdirectory(external/nanopb)
 add_subdirectory(common)
 add_subdirectory(firmware)
