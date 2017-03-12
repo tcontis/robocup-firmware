@@ -5,6 +5,8 @@
 #include "CommModule.hpp"
 #include "Decawave.hpp"
 #include "RtosTimerHelper.hpp"
+#include "protobuf/nanopb/RadioTx.pb.h"
+#include "pb_decode.h"
 
 class RadioProtocol {
 public:
@@ -78,6 +80,9 @@ public:
         const rtp::ControlMessage* msg;
         size_t slot;
         // printf("UUIDs: ");
+        Packet_RobotsTxPacket test ;
+        auto t = Packet_RadioTx_fields;
+        auto stream = pb_istream_from_buffer(pkt.payload.data(), pkt.payload.size());
         for (slot = 0; slot < 6; slot++) {
             size_t offset = slot * sizeof(rtp::ControlMessage);
             msg = (const rtp::ControlMessage*)(pkt.payload.data() + offset);

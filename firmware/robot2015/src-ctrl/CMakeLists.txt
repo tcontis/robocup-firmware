@@ -33,8 +33,10 @@ file(GLOB_RECURSE robot2015_SRC "*.cpp")
 # add the target for making the elf file
 add_executable(robot2015_elf ${robot2015_SRC} ${asm_SRC})
 
+target_link_libraries(robot2015_elf nanopb_messages)
 # specify that we depend on the common2015 library and link to it
 target_link_libraries(robot2015_elf common2015)
+target_link_libraries(robot2015_elf libprotobuf-nanopb)
 
 # include directories
 target_include_directories(robot2015_elf PUBLIC ${ROBOT2015_ELF_INCLUDES})
