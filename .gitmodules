@@ -1,5 +1,5 @@
 [submodule "common"]
-	path = common
+	path = firmware/common
 	url = https://github.com/RoboJackets/robocup-common.git
 [submodule "external/mbed_lib_build_tools"]
 	path = external/mbed_lib_build_tools
@@ -14,5 +14,5 @@
 	path = external/style-configs
 	url = https://github.com/RoboJackets/style-configs.git
 [submodule "external/nanopb"]
-	path = external/nanopb
+	path = firmware/nanopb
 	url = https://github.com/ashaw596/nanopb.git
