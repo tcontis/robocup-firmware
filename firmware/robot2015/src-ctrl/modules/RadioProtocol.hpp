@@ -83,6 +83,7 @@ public:
         Packet_RobotsTxPacket test ;
         auto t = Packet_RadioTx_fields;
         auto stream = pb_istream_from_buffer(pkt.payload.data(), pkt.payload.size());
+        bool worked = pb_decode(&stream, Packet_RobotsTxPacket_fields, &test); 
         for (slot = 0; slot < 6; slot++) {
             size_t offset = slot * sizeof(rtp::ControlMessage);
             msg = (const rtp::ControlMessage*)(pkt.payload.data() + offset);

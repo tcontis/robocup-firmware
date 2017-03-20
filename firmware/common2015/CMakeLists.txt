@@ -67,8 +67,8 @@ set(common2015_INCLUDE_DIRS
 )
 
 # TODO(justin): do better
-list(APPEND common2015_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/common)
-list(APPEND common2015_SRC ${PROJECT_SOURCE_DIR}/common/Pid.cpp)
+list(APPEND common2015_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/firmware/common)
+list(APPEND common2015_SRC ${PROJECT_SOURCE_DIR}/firmware/common/Pid.cpp)
 
 # append all of the common2015 subdirectories listed in the variables above
 foreach(driver_subdir ${DRIVERS})
@@ -86,7 +86,7 @@ list(APPEND common2015_INCLUDE_DIRS ${MBED_ASSEC_LIBS_INCLUDES})
 
 # include PID from common
 list(APPEND common2015_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/common/)
-list(APPEND common2015_SRC ${CMAKE_SOURCE_DIR}/common/Pid.cpp)
+list(APPEND common2015_SRC ${CMAKE_SOURCE_DIR}/firmware/common/Pid.cpp)
 
 # tell cmake that all of the source files aren't here yet
 # set_source_files_properties(
@@ -97,7 +97,7 @@ list(APPEND common2015_SRC ${CMAKE_SOURCE_DIR}/common/Pid.cpp)
 
 # build the 'common2015' library that contains all the MBED stuff needed for
 # both the base station and robot firmware
-add_library(common2015 ${common2015_SRC} ${CMAKE_BINARY_DIR}/common/git_version.cpp)
+add_library(common2015 ${common2015_SRC} ${CMAKE_BINARY_DIR}/firmware/common/git_version.cpp)
 
 # CC1201 Register settings
 # Automatically generate a C header with the register values from a chosen smartrf xml file
@@ -130,6 +130,6 @@ set_target_properties(common2015 PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # See common/CMakeLists for more info on how this works
 add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/common/git_version.cpp
+    OUTPUT ${CMAKE_BINARY_DIR}/firmware/common/git_version.cpp
     DEPENDS git_version
 )
