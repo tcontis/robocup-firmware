@@ -74,16 +74,23 @@ public:
     State state() const { return _state; }
 
     void rxHandler(rtp::packet pkt) {
-        // LOG(INIT, "got pkt!");
+        LOG(INIT, "got pkt!");
         // TODO: check packet size before parsing
         bool addressed = false;
-        const rtp::ControlMessage* msg;
+        const rtp::ControlMessage* msg = nullptr;
         size_t slot;
         // printf("UUIDs: ");
         Packet_RobotsTxPacket test ;
         auto t = Packet_RadioTx_fields;
+
+        LOG(INIT, "test1");
         auto stream = pb_istream_from_buffer(pkt.payload.data(), pkt.payload.size());
         bool worked = pb_decode(&stream, Packet_RobotsTxPacket_fields, &test); 
+        LOG(INIT, "%d:%d", 1, worked);
+
+        LOG(INIT, "%d:%d", test.robots[0].message.control.integer_vel_commands.xVelocity ,worked);
+        /*
+
         for (slot = 0; slot < 6; slot++) {
             size_t offset = slot * sizeof(rtp::ControlMessage);
             msg = (const rtp::ControlMessage*)(pkt.payload.data() + offset);
@@ -95,6 +102,7 @@ public:
                 break;
             }
         }
+        */
         // printf("\r\n");
 
         /// time, in ms, for each reply slot
@@ -113,12 +121,14 @@ public:
         } else {
             _replyTimer.start(1 + SLOT_DELAY * (_uid % 6));
         }
-
-        if (rxCallback) {
-            _reply = std::move(rxCallback(msg, addressed));
-        } else {
-            LOG(WARN, "no callback set");
+        if (msg) {
+            if (rxCallback) {
+                _reply = std::move(rxCallback(msg, addressed));
+            } else {
+                LOG(WARN, "no callback set");
+            }
         }
+        LOG(INIT, "doNE");
     }
 
 private:

@@ -88,3 +88,8 @@ python-matplotlib
 python-usb
 freeglut3-dev
 mercurial
+
+
+g++-multilib
+libc6-dev-i386
+
