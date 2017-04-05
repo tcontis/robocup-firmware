@@ -6,6 +6,8 @@
 #include "Decawave.hpp"
 #include "RtosTimerHelper.hpp"
 #include "protobuf/nanopb/RadioTx.pb.h"
+#include "protobuf/nanopb/Control.pb.h"
+#include "protobuf/nanopb/RadioRx.pb.h"
 #include "pb_decode.h"
 
 class RadioProtocol {
@@ -48,7 +50,7 @@ public:
      * @param msg A pointer to the start of the message addressed to this robot
      * @return formatted reply buffer
      */
-    std::function<std::vector<uint8_t>(const rtp::ControlMessage* msg,
+    std::function<std::vector<uint8_t>(const Packet_RadioRobotControl& msg,
                                        const bool addresed)> rxCallback;
 
     void start() {
@@ -74,35 +76,53 @@ public:
     State state() const { return _state; }
 
     void rxHandler(rtp::packet pkt) {
-        LOG(INIT, "got pkt!");
+        //LOG(INIT, "got pkt!");
         // TODO: check packet size before parsing
         bool addressed = false;
-        const rtp::ControlMessage* msg = nullptr;
-        size_t slot;
+        //const rtp::ControlMessage* msg = nullptr;
+        
         // printf("UUIDs: ");
         Packet_RobotsTxPacket test ;
-        auto t = Packet_RadioTx_fields;
+        //auto t = Packet_RadioTx_fields;
+        //LOG(INIT, "%d", sizeof(Packet_RobotsTxPacket));
+        //LOG(INIT, "test1\r\n");
+        fflush(stdout);
+       // Thread::wait(1000);
 
-        LOG(INIT, "test1");
+        const Packet_RadioRobotControl *controlMessage = nullptr;
+
         auto stream = pb_istream_from_buffer(pkt.payload.data(), pkt.payload.size());
         bool worked = pb_decode(&stream, Packet_RobotsTxPacket_fields, &test); 
-        LOG(INIT, "%d:%d", 1, worked);
+        //LOG(INIT, "%d:%d", 1, worked);
+        //Thread::wait(1000);
+        size_t slot;
 
-        LOG(INIT, "%d:%d", test.robots[0].message.control.integer_vel_commands.xVelocity ,worked);
-        /*
+        //LOG(INF1, "%d:%d", test.robots[0].message.control.integer_vel_commands.xVelocity ,worked);
+        //LOG(INIT, "test.robots_count:%d", test.robots_count);
+        if (worked) {
 
-        for (slot = 0; slot < 6; slot++) {
-            size_t offset = slot * sizeof(rtp::ControlMessage);
-            msg = (const rtp::ControlMessage*)(pkt.payload.data() + offset);
+            for (slot = 0; slot < test.robots_count; slot++) {
+                //LOG(INIT, "slot:%d", slot);
+                const auto& robot = test.robots[slot];
 
-            // printf("%d:%d ", slot, msg->uid);
-            if (msg->uid == _uid) {
-                // LOG(INIT, "")
-                addressed = true;
-                break;
+                //LOG(INIT, "Slot %d; UID: %d ", slot, robot.uid);
+                
+                //size_t offset = slot * sizeof(rtp::ControlMessage);
+                //msg = (const rtp::ControlMessage*)(pkt.payload.data() + offset);
+
+                if (robot.uid == _uid) {
+                    // LOG(INIT, "")
+                    addressed = true;
+                    if (robot.which_message == Packet_RobotTxPacket_control_tag) {
+                        LOG(INIT, "control Message");
+                        controlMessage = &robot.message.control;
+                    }
+                    break;
+                }
+                
             }
         }
-        */
+        
         // printf("\r\n");
 
         /// time, in ms, for each reply slot
@@ -116,23 +136,29 @@ public:
         _timeoutTimer.start(TIMEOUT_INTERVAL);
 
         // TODO: this is bad and lazy
+        
         if (addressed) {
+            //LOG(INIT, "replyTimer STart");
             _replyTimer.start(1 + SLOT_DELAY * slot);
         } else {
             _replyTimer.start(1 + SLOT_DELAY * (_uid % 6));
         }
-        if (msg) {
+        
+        if (controlMessage) {
             if (rxCallback) {
-                _reply = std::move(rxCallback(msg, addressed));
+                _reply = std::move(rxCallback(*controlMessage, addressed));
             } else {
                 LOG(WARN, "no callback set");
             }
+
         }
-        LOG(INIT, "doNE");
+        //LOG(INIT, "doNE");
     }
 
 private:
     void reply() {
+
+        LOG(INIT, "Replyyyy");
         rtp::packet pkt;
         pkt.header.port = rtp::Port::CONTROL;
         pkt.header.type = rtp::header_data::Control;

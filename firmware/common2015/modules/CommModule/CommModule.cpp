@@ -20,7 +20,7 @@ CommModule::~CommModule() {
 CommModule::CommModule(std::shared_ptr<FlashingTimeoutLED> rxTimeoutLED,
                        std::shared_ptr<FlashingTimeoutLED> txTimeoutLED)
     : _rxThread(&CommModule::rxThreadHelper, this, osPriorityAboveNormal,
-                DEFAULT_STACK_SIZE / 2),
+                DEFAULT_STACK_SIZE),
       _txThread(&CommModule::txThreadHelper, this, osPriorityHigh,
                 DEFAULT_STACK_SIZE / 2),
       _rxTimeoutLED(rxTimeoutLED),
@@ -79,8 +79,8 @@ void CommModule::txThread() {
                 _ports[p->header.port].txCallback()(p);
                 _ports[p->header.port].txCount++;
 
-                // LOG(INF2, "Transmission:\r\n    Port:\t%u\r\n",
-                // p->header.port);
+                LOG(INIT, "Transmission:\r\n    Port:\t%u\r\n",
+                p->header.port);
             }
 
             // Release the allocated memory once data is sent
@@ -140,7 +140,13 @@ void CommModule::rxThread() {
             // free memory allocated for mail
             osMailFree(_rxQueue, p);
 
+            LOG(INIT, "hHi");
             tState = _rxThread.set_priority(threadPriority);
+
+            LOG(INIT, "hi2", osOK);
+            LOG(INIT, "%d\n", osOK);
+            fflush(stdout);
+
             ASSERT(tState == osOK);
         }
     }
@@ -178,7 +184,7 @@ void CommModule::send(rtp::packet packet) {
             LOG(FATAL, "Unable to allocate packet onto mail queue");
             return;
         }
-
+        LOG(INIT, "send packet");
         // Copy the contents into the allocated memory block
         *p = std::move(packet);
 

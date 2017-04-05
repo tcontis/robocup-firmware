@@ -25,6 +25,11 @@
 #include "neostrip.hpp"
 #include "robot-devices.hpp"
 #include "task-signals.hpp"
+#include "protobuf/nanopb/Control.pb.h"
+
+#include "protobuf/nanopb/RadioRx.pb.h"
+
+#include "pb_encode.h"
 
 #define RJ_ENABLE_ROBOT_CONSOLE
 
@@ -241,67 +246,129 @@ int main() {
     radioProtocol.start();
 
     radioProtocol.rxCallback =
-        [&](const rtp::ControlMessage* msg, const bool addressed) {
+        [&](const Packet_RadioRobotControl &msg, const bool addressed) {
+            const auto &integer_vel_commands = msg.integer_vel_commands;
+            const auto &other_controls = msg.other_controls;
             // reset timeout
             radioTimeoutTimer.start(RADIO_TIMEOUT);
 
             if (addressed) {
                 // update target velocity from packet
                 Task_Controller_UpdateTarget({
-                    static_cast<float>(msg->bodyX) /
+                    static_cast<float>(integer_vel_commands.xVelocity) /
                         rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
-                    static_cast<float>(msg->bodyY) /
+                    static_cast<float>(integer_vel_commands.xVelocity) /
                         rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
-                    static_cast<float>(msg->bodyW) /
+                    static_cast<float>(integer_vel_commands.wVelocity) /
                         rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
                 });
 
                 // dribbler
-                Task_Controller_UpdateDribbler(msg->dribbler);
+                Task_Controller_UpdateDribbler(other_controls.dVelocity);
 
                 // kick!
-                kickStrength = msg->kickStrength;
-                if (msg->triggerMode == 1) {
-                    // kick immediate
-                    kick_hack.kick(kickStrength);
-                } else if (msg->triggerMode == 2) {
-                    // kick on break beam
-                    if (ballSense.have_ball()) {
+                kickStrength = other_controls.kcStrength;
+                if (other_controls.shootMode == Packet_OtherControls_ShootMode_KICK) {
+                    if (other_controls.triggerMode == Packet_OtherControls_TriggerMode_IMMEDIATE) {
+                        // kick immediate
                         kick_hack.kick(kickStrength);
-                        kickOnBreakBeam = false;
-                    } else {
-                        // set flag so that next break beam triggers a kick
-                        kickOnBreakBeam = true;
+                    } else if (other_controls.triggerMode == Packet_OtherControls_TriggerMode_ON_BREAK_BEAM) {
+                        // kick on break beam
+                        if (ballSense.have_ball()) {
+                            kick_hack.kick(kickStrength);
+                            kickOnBreakBeam = false;
+                        } else {
+                            // set flag so that next break beam triggers a kick
+                            kickOnBreakBeam = true;
+                        }
                     }
+                    //TODO: should this stand down?
+                    /*
+                    else if (other_controls.triggerMode == Packet_OtherControls_TriggerMode_STAND_DOWN)
+                    */
                 }
             }
 
-            rtp::RobotStatusMessage reply;
-            reply.uid = robotShellID;
-            reply.battVoltage = battVoltage;
-            reply.ballSenseStatus = ballSense.have_ball() ? 1 : 0;
+            LOG(INIT, "set stuff");
+
+            Packet_RobotRxPacket reply = Packet_RobotRxPacket_init_default;
+
+            reply.which_message = Packet_RobotRxPacket_robot_status_message_tag;
+            auto &robotmessage = reply.message.robot_status_message;
+            robotmessage = Packet_RobotStatusMessage_init_default;
+
+           
+            robotmessage.has_uid = true;
+            robotmessage.uid = robotShellID;
+
+            robotmessage.has_battery_level = true;
+            robotmessage.battery_level = battVoltage;
+
+            robotmessage.has_ball_sense_status = true;
+            robotmessage.ball_sense_status = ballSense.have_ball() ? Packet_BallSenseStatus_HasBall : Packet_BallSenseStatus_NoBall;
+            //TODO: Error Messages
 
             // report any motor errors
-            reply.motorErrors = 0;
+            
+            auto &motorStatus = robotmessage.motor_status;
             for (auto i = 0; i < 5; i++) {
                 auto err = global_motors[i].status.hasError;
-                if (err) reply.motorErrors |= (1 << i);
+                //if (err) {
+                //    reply.motorErrors |= (1 << i);
+                //}
+                auto status = err ? Packet_MotorStatus_Encoder_Failure : Packet_MotorStatus_Good;
+                //TODO: What errors do we have?
+
+                switch(i) {
+                    case 0:
+                        motorStatus.has_motor1 = true;
+                        motorStatus.motor1 = status;
+                        break;
+                    case 1:
+                        motorStatus.has_motor2 = true;
+                        motorStatus.motor2 = status;
+                        break;
+                    case 2:
+                        motorStatus.has_motor3 = true;
+                        motorStatus.motor3 = status;
+                        break;
+                    case 3:
+                        motorStatus.has_motor4 = true;
+                        motorStatus.motor4 = status;
+                        break;
+                    case 4:
+                        motorStatus.has_dribbler = true;
+                        motorStatus.dribbler = status;
+                        break;
+                }
             }
 
+
+            robotmessage.has_fpga_status = true;
             // fpga status
             if (!fpgaInitialized) {
-                reply.fpgaStatus = 1;
+                robotmessage.fpga_status = Packet_FpgaStatus_FpgaNotInitialized;
             } else if (fpgaError) {
-                reply.fpgaStatus = 1;
+                robotmessage.fpga_status = Packet_FpgaStatus_FpgaError;
             } else {
-                reply.fpgaStatus = 0;  // good
+                robotmessage.fpga_status = Packet_FpgaStatus_FpgaGood;
             }
 
             // kicker status
-            reply.kickStatus = kick_hack.canKick();
+            robotmessage.has_kicker_status = true;
+            robotmessage.kicker_status = kick_hack.canKick() ? Packet_KickerStatus_KickerCharged : Packet_KickerStatus_KickerCharging;
 
-            vector<uint8_t> replyBuf;
-            rtp::SerializeToVector(reply, &replyBuf);
+            robotmessage.has_hardware_version = true;
+            robotmessage.hardware_version = Packet_HardwareVersion_RJ2015;
+
+            std::vector<pb_byte_t> replyBuf(Packet_RobotRxPacket_size);
+            auto ostream = pb_ostream_from_buffer(replyBuf.data(), Packet_RobotRxPacket_size);
+
+            auto worked = pb_encode(&ostream, Packet_RobotRxPacket_fields, &reply);
+
+            LOG(INIT, "back_encode_worked:%d", worked);
+
+            //rtp::SerializeToVector(reply, &replyBuf);
 
             return replyBuf;
         };
