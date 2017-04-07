@@ -73,6 +73,7 @@ void CommModule::txThread() {
                 _txTimeoutLED->renew();
             }
 
+
             // Call the user callback function
             if (_ports.find(p->header.port) != _ports.end() &&
                 _ports[p->header.port].txCallback() != nullptr) {
@@ -140,12 +141,12 @@ void CommModule::rxThread() {
             // free memory allocated for mail
             osMailFree(_rxQueue, p);
 
-            LOG(INIT, "hHi");
+            //LOG(INIT, "hHi");
             tState = _rxThread.set_priority(threadPriority);
 
-            LOG(INIT, "hi2", osOK);
-            LOG(INIT, "%d\n", osOK);
-            fflush(stdout);
+            //LOG(INIT, "hi2", osOK);
+            //LOG(INIT, "%d\n", osOK);
+            //fflush(stdout);
 
             ASSERT(tState == osOK);
         }
@@ -184,7 +185,7 @@ void CommModule::send(rtp::packet packet) {
             LOG(FATAL, "Unable to allocate packet onto mail queue");
             return;
         }
-        LOG(INIT, "send packet");
+        //LOG(INIT, "send packet");
         // Copy the contents into the allocated memory block
         *p = std::move(packet);
 

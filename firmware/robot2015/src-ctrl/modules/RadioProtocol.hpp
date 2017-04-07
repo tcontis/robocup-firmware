@@ -81,12 +81,12 @@ public:
         bool addressed = false;
         //const rtp::ControlMessage* msg = nullptr;
         
-        // printf("UUIDs: ");
+        //printf("UUIDs: ");
         Packet_RobotsTxPacket test ;
         //auto t = Packet_RadioTx_fields;
         //LOG(INIT, "%d", sizeof(Packet_RobotsTxPacket));
-        //LOG(INIT, "test1\r\n");
-        fflush(stdout);
+        LOG(INIT, "test1\r\n");
+        //fflush(stdout);
        // Thread::wait(1000);
 
         const Packet_RadioRobotControl *controlMessage = nullptr;

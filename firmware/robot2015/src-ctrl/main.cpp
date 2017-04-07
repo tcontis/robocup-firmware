@@ -25,11 +25,14 @@
 #include "neostrip.hpp"
 #include "robot-devices.hpp"
 #include "task-signals.hpp"
+#include <string> 
+
 #include "protobuf/nanopb/Control.pb.h"
 
 #include "protobuf/nanopb/RadioRx.pb.h"
 
 #include "pb_encode.h"
+#include "pb_decode.h"
 
 #define RJ_ENABLE_ROBOT_CONSOLE
 
@@ -289,9 +292,11 @@ int main() {
                 }
             }
 
-            LOG(INIT, "set stuff");
+            //LOG(INIT, "set stuff");
 
             Packet_RobotRxPacket reply = Packet_RobotRxPacket_init_default;
+            reply.has_robot_id = true;
+            reply.robot_id = robotShellID;
 
             reply.which_message = Packet_RobotRxPacket_robot_status_message_tag;
             auto &robotmessage = reply.message.robot_status_message;
@@ -366,7 +371,25 @@ int main() {
 
             auto worked = pb_encode(&ostream, Packet_RobotRxPacket_fields, &reply);
 
+            //LOG(INIT, "back_encode_worked:%d", worked);
+            //LOG(INIT, "size:%d", ostream.bytes_written);
             LOG(INIT, "back_encode_worked:%d", worked);
+/*
+            Packet_RobotRxPacket test;
+            auto stream = pb_istream_from_buffer(replyBuf.data(), Packet_RobotRxPacket_size);
+            bool worked1 = pb_decode(&stream, Packet_RobotRxPacket_fields, &test); 
+
+            LOG(INIT, "back_dencode_worked:%d", worked1);
+            string str;
+            char buffer [33];
+            for (auto b: replyBuf) {
+                str += itoa(b, buffer, 10);
+                str += ' ';
+            }
+
+            LOG(INIT, "string: %s", str.c_str());
+            */
+            replyBuf.resize(ostream.bytes_written);
 
             //rtp::SerializeToVector(reply, &replyBuf);
 

@@ -36,8 +36,8 @@ public:
 
 private:
     uint32_t _chip_version;
-    uint8 rx_buffer[100];  // TODO: better tx and rx buffer
-    uint8 tx_buffer[100];
+    uint8 rx_buffer[200];  // TODO: better tx and rx buffer
+    uint8 tx_buffer[200];
     bool _isInit;
 
     uint32_t rx_status;
