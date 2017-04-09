@@ -80,8 +80,8 @@ void CommModule::txThread() {
                 _ports[p->header.port].txCallback()(p);
                 _ports[p->header.port].txCount++;
 
-                LOG(INIT, "Transmission:\r\n    Port:\t%u\r\n",
-                p->header.port);
+                //LOG(INIT, "Transmission:\r\n    Port:\t%u\r\n",
+                //p->header.port);
             }
 
             // Release the allocated memory once data is sent
