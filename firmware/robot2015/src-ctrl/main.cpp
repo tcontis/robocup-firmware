@@ -249,18 +249,24 @@ int main() {
     radioProtocol.start();
 
     radioProtocol.rxCallback =
-        [&](const Packet_RadioRobotControl &msg, const bool addressed) {
-            const auto &integer_vel_commands = msg.integer_vel_commands;
-            const auto &other_controls = msg.other_controls;
+        [&](const Packet_RadioRobotControl *msg, const bool addressed) {
+            
             // reset timeout
             radioTimeoutTimer.start(RADIO_TIMEOUT);
 
-            if (addressed) {
+            if (addressed && msg) {
+                const auto &integer_vel_commands = msg->integer_vel_commands;
+                const auto &other_controls = msg->other_controls;
+
+                //LOG(INIT, "Target Vect: %d %d %d", integer_vel_commands.xVelocity, integer_vel_commands.yVelocity, integer_vel_commands.wVelocity);
+                //LOG(INIT, "Target Vect: %f %f %f", static_cast<float>(integer_vel_commands.xVelocity) /
+                //        rtp::ControlMessage::VELOCITY_SCALE_FACTOR, integer_vel_commands.yVelocity, integer_vel_commands.wVelocity);
+                
                 // update target velocity from packet
                 Task_Controller_UpdateTarget({
                     static_cast<float>(integer_vel_commands.xVelocity) /
                         rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
-                    static_cast<float>(integer_vel_commands.xVelocity) /
+                    static_cast<float>(integer_vel_commands.yVelocity) /
                         rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
                     static_cast<float>(integer_vel_commands.wVelocity) /
                         rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
@@ -373,7 +379,7 @@ int main() {
 
             //LOG(INIT, "back_encode_worked:%d", worked);
             //LOG(INIT, "size:%d", ostream.bytes_written);
-            LOG(INIT, "back_encode_worked:%d", worked);
+            //LOG(INIT, "back_encode_worked:%d", worked);
 /*
             Packet_RobotRxPacket test;
             auto stream = pb_istream_from_buffer(replyBuf.data(), Packet_RobotRxPacket_size);

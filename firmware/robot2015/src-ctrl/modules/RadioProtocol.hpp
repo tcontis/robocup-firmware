@@ -50,7 +50,7 @@ public:
      * @param msg A pointer to the start of the message addressed to this robot
      * @return formatted reply buffer
      */
-    std::function<std::vector<uint8_t>(const Packet_RadioRobotControl& msg,
+    std::function<std::vector<uint8_t>(const Packet_RadioRobotControl* msg,
                                        const bool addresed)> rxCallback;
 
     void start() {
@@ -85,7 +85,7 @@ public:
         Packet_RobotsTxPacket test ;
         //auto t = Packet_RadioTx_fields;
         //LOG(INIT, "%d", sizeof(Packet_RobotsTxPacket));
-        LOG(INIT, "test1\r\n");
+        //LOG(INIT, "test1\r\n");
         //fflush(stdout);
        // Thread::wait(1000);
 
@@ -114,7 +114,7 @@ public:
                     // LOG(INIT, "")
                     addressed = true;
                     if (robot.which_message == Packet_RobotTxPacket_control_tag) {
-                        LOG(INIT, "control Message");
+                        //LOG(INIT, "control Message");
                         controlMessage = &robot.message.control;
                     }
                     break;
@@ -144,13 +144,10 @@ public:
             _replyTimer.start(1 + SLOT_DELAY * (_uid % 6));
         }
         
-        if (controlMessage) {
-            if (rxCallback) {
-                _reply = std::move(rxCallback(*controlMessage, addressed));
-            } else {
-                LOG(WARN, "no callback set");
-            }
-
+        if (rxCallback) {
+            _reply = std::move(rxCallback(controlMessage, addressed));
+        } else {
+            LOG(WARN, "no callback set");
         }
         //LOG(INIT, "doNE");
     }
@@ -158,7 +155,7 @@ public:
 private:
     void reply() {
 
-        LOG(INIT, "Replyyyy");
+        //LOG(INIT, "Replyyyy");
         rtp::packet pkt;
         pkt.header.port = rtp::Port::CONTROL;
         pkt.header.type = rtp::header_data::Control;
