@@ -133,21 +133,24 @@ int32_t Decawave::sendPacket(const rtp::packet* pkt) {
     tx_buffer[1] = 0;
     */
 
-    uint8_t i;
-    uint8_t* headerData = (uint8_t*)&pkt->header;
-    for (i = 0; i < sizeof(pkt->header); ++i) {
-        tx_buffer[i + 9] = headerData[i];
-    }
-    i += 8;
-    for (uint8_t byte : pkt->payload) {
-        i++;
-        tx_buffer[i] = byte;
-    }
-    tx_buffer[i + 1] = 0;
-    tx_buffer[i + 2] = 0;
+    
+    const rtp::header_data *headerData = &pkt->header;
 
-    dwt_writetxdata(i + 3, tx_buffer, 0);
-    dwt_writetxfctrl(i + 3, 0, 0);
+    // Copy the payload Header to tx_buffer
+    auto bufferPointer = &tx_buffer[9];
+    bufferPointer = std::copy((const uint8*)(headerData), (const uint8*)std::next(headerData,1), bufferPointer); 
+    
+    // Copy the payload to teh tx_buffer
+    bufferPointer = std::copy(pkt->payload.begin(), pkt->payload.end(), bufferPointer); 
+    
+    // Set i to the size of the copied elements of the tx_buffer
+    uint8_t i = std::distance(&tx_buffer[0], bufferPointer);
+    
+    tx_buffer[i] = 0;
+    tx_buffer[i + 1] = 0;
+
+    dwt_writetxdata(i + 2, tx_buffer, 0);
+    dwt_writetxfctrl(i + 2, 0, 0);
 
     if (DWT_SUCCESS ==
         dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED)) {
