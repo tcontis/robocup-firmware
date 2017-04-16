@@ -265,11 +265,11 @@ int main() {
                 // update target velocity from packet
                 Task_Controller_UpdateTarget({
                     static_cast<float>(integer_vel_commands.xVelocity) /
-                        rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
+                        rtp::VELOCITY_SCALE_FACTOR,
                     static_cast<float>(integer_vel_commands.yVelocity) /
-                        rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
+                        rtp::VELOCITY_SCALE_FACTOR,
                     static_cast<float>(integer_vel_commands.wVelocity) /
-                        rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
+                        rtp::VELOCITY_SCALE_FACTOR,
                 });
 
                 // dribbler
