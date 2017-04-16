@@ -308,10 +308,6 @@ int main() {
             auto &robotmessage = reply.message.robot_status_message;
             robotmessage = Packet_RobotStatusMessage_init_default;
 
-           
-            robotmessage.has_uid = true;
-            robotmessage.uid = robotShellID;
-
             robotmessage.has_battery_level = true;
             robotmessage.battery_level = battVoltage;
 
