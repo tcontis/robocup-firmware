@@ -158,7 +158,6 @@ private:
         //LOG(INIT, "Replyyyy");
         rtp::packet pkt;
         pkt.header.port = rtp::Port::CONTROL;
-        pkt.header.type = rtp::header_data::Control;
         pkt.header.address = rtp::BASE_STATION_ADDRESS;
 
         pkt.payload = std::move(_reply);
