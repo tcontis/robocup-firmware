@@ -9,6 +9,7 @@
 #include "protobuf/nanopb/Control.pb.h"
 #include "protobuf/nanopb/RadioRx.pb.h"
 #include "pb_decode.h"
+#include "zlib.h"
 
 class RadioProtocol {
 public:
@@ -75,6 +76,35 @@ public:
 
     State state() const { return _state; }
 
+    int gunzip(unsigned char *dst, unsigned long *dst_length, unsigned char *src, unsigned long src_length)
+    {
+        z_stream stream;
+        memset(&stream, 0, sizeof(stream));
+     
+        stream.next_in = src;
+        stream.avail_in = src_length;
+     
+        stream.next_out = dst;
+        stream.avail_out = *dst_length;
+     
+        int rv = inflateInit2(&stream, 15 + 16);
+        if (Z_OK == rv) {
+            rv = inflate(&stream, Z_NO_FLUSH);
+            if (Z_STREAM_END == rv) {
+                inflateEnd(&stream);
+                rv = Z_OK;
+            }
+        }
+     
+        if (Z_OK == rv) {
+            *dst_length = stream.total_out;
+        } else {
+            *dst_length = 0;
+        }
+     
+        return rv;
+    }
+
     void rxHandler(rtp::packet pkt) {
         //LOG(INIT, "got pkt!");
         // TODO: check packet size before parsing
@@ -91,7 +121,11 @@ public:
 
         const Packet_RadioRobotControl *controlMessage = nullptr;
 
-        auto stream = pb_istream_from_buffer(pkt.payload.data(), pkt.payload.size());
+        unsigned long output_data_length = 0;
+        unsigned char output_data[Packet_RobotsTxPacket_size];
+        int rv = gunzip(output_data, &output_data_length, pkt.payload.data(), pkt.payload.size());
+
+        auto stream = pb_istream_from_buffer(output_data, output_data_length);
         bool worked = pb_decode(&stream, Packet_RobotsTxPacket_fields, &test); 
         //LOG(INIT, "%d:%d", 1, worked);
         //Thread::wait(1000);

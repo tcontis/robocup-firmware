@@ -63,6 +63,9 @@ include_directories("${PROJECT_BINARY_DIR}/firmware/common") # for generated pro
 include_directories("${PROJECT_SOURCE_DIR}/firmware/nanopb") # for headers in common/
 include_directories("${PROJECT_BINARY_DIR}/firmware/nanopb") # for generated protobuf headers
 
+include_directories("${PROJECT_SOURCE_DIR}/firmware/zlib") # for generated protobuf headers
+include_directories("${PROJECT_BINARY_DIR}/firmware/zlib") # for generated protobuf headers
+
 # build robot and base station firmware and the library that they depend on
 add_subdirectory(mbed)
 add_subdirectory(nanopb)
@@ -70,3 +73,4 @@ add_subdirectory(common)
 add_subdirectory(common2015)
 add_subdirectory(base2015)
 add_subdirectory(robot2015)
+add_subdirectory(zlib)

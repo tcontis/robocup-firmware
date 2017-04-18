@@ -126,6 +126,9 @@ int main() {
 
     // buffer to read data from usb bulk transfers into
     uint8_t buf[MAX_PACKET_SIZE_EPBULK];
+    LOG(INIT, "MAX_PACKET_SIZE_EPBULK; %d", MAX_PACKET_SIZE_EPBULK);
+
+    LOG(INIT, "Forward_Size:%d", rtp::Forward_Size);
     uint32_t bufSize;
 
     while (true) {
@@ -136,7 +139,7 @@ int main() {
         // if data is available, write it into @pkt and send it
         if (usbLink.readEP_NB(EPBULK_OUT, buf, &bufSize,
                               MAX_PACKET_SIZE_EPBULK)) {
-            LOG(INF3, "Read %d bytes from BULK IN", bufSize);
+            LOG(INIT, "Read %d bytes from BULK IN", bufSize);
 
             // construct packet from buffer received over USB
             rtp::packet pkt;
