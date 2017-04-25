@@ -125,10 +125,15 @@ int main() {
     LOG(INIT, "Listening for commands over USB");
 
     // buffer to read data from usb bulk transfers into
-    uint8_t buf[MAX_PACKET_SIZE_EPBULK];
-    LOG(INIT, "MAX_PACKET_SIZE_EPBULK; %d", MAX_PACKET_SIZE_EPBULK);
+// <<<<<<< Updated upstream
+//     uint8_t buf[MAX_PACKET_SIZE_EPBULK];
+//     LOG(INIT, "MAX_PACKET_SIZE_EPBULK; %d", MAX_PACKET_SIZE_EPBULK);
 
-    LOG(INIT, "Forward_Size:%d", rtp::Forward_Size);
+//     LOG(INIT, "Forward_Size:%d", rtp::Forward_Size);
+// =======
+    uint8_t buf[300];
+    uint32_t bufIndex = 0;
+// >>>>>>> Stashed changes
     uint32_t bufSize;
 
     while (true) {
@@ -137,19 +142,25 @@ int main() {
         Watchdog::Renew();
         // attempt to read data from EPBULK_OUT
         // if data is available, write it into @pkt and send it
-        if (usbLink.readEP_NB(EPBULK_OUT, buf, &bufSize,
+        if (usbLink.readEP_NB(EPBULK_OUT, &buf[bufIndex], &bufSize,
                               MAX_PACKET_SIZE_EPBULK)) {
             LOG(INIT, "Read %d bytes from BULK IN", bufSize);
 
-            // construct packet from buffer received over USB
-            rtp::packet pkt;
-            pkt.recv(buf, bufSize);
+            if (bufSize == MAX_PACKET_SIZE_EPBULK) {
+                bufIndex += bufSize;
+            } else {
 
-            // send to all robots
-            pkt.header.address = rtp::ROBOT_ADDRESS;
+                // construct packet from buffer received over USB
+                rtp::packet pkt;
+                pkt.recv(buf, bufIndex);
 
-            // transmit!
-            CommModule::Instance->send(std::move(pkt));
+                // // send to all robots
+                pkt.header.address = rtp::ROBOT_ADDRESS;
+
+                // transmit!
+                CommModule::Instance->send(std::move(pkt));
+                bufIndex = 0;
+            }
         }
         Thread::yield();
     }
