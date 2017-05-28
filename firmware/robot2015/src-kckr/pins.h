@@ -7,16 +7,16 @@
 //#define KICK_MOSI_PIN (PORTA6)  // pin 7, not actually used in code
 //#define V_MONITOR_PIN (PORTB1)  // pin 11
 // active low buttons
-//#define DB_KICK_PIN (PORTA2)  // should send a normal kick commmand
+#define DB_KICK_PIN (PA3)  // should send a normal kick commmand
 // #define DB_CHIP_PIN (PORT)  // should send a normal chip command
-#define DB_CHG_PIN (PA7)   // pressed = enable_charging
+#define DB_CHG_PIN (PA1)   // pressed = enable_charging
                            // unpressed = disable_charging
 //#define DB_SWITCH (PORTA3)
 
 /* Outputs */
 #define CHARGE_PIN (PB2)
 // #define CHIP_PIN (PORT)    // pin 12
-//#define KICK_PIN (PORTA0)    // pin 13
+#define KICK_PIN (PB1)    // pin 13
 
 /* Tri-State */
 //#define KICK_MISO_PIN (PORTA5)  // pin 8

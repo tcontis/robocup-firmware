@@ -2,6 +2,7 @@
 
 // #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <util/delay.h>
 // #include <util/delay.h>
 //
 // #include "kicker_commands.h"
@@ -66,9 +67,9 @@ void main() {
     // ensure KICK_PIN, CHIP_PIN, and CHARGE_PIN are outputs
     // DDB0 = 1;  // MISO is handled by CS interrupt
     // SETBIT(DDRB,0);
-    //DDRA &= ~(_BV(DB_CHG_PIN));
+    DDRA &= ~(_BV(DB_CHG_PIN) | _BV(DB_KICK_PIN));
 
-    DDRB |= _BV(CHARGE_PIN);
+    DDRB |= _BV(CHARGE_PIN) | _BV(KICK_PIN);
 
     // ensure N_KICK_CS & MISO are inputs
     /* DDRA &= ~(_BV(N_KICK_CS_PIN) | _BV(KCKR_MISO_PIN)); */
@@ -122,6 +123,8 @@ void main() {
     // needs to be int to force voltage_accum calculation to use ints
     // const int kalpha = 32;
 
+
+    uint32_t just_kicked = 0;
     // We handle voltage readings here
     while (1) {
         // get a voltage reading by weighing in a new reading, same concept as
@@ -132,15 +135,31 @@ void main() {
         // last_voltage_ = voltage_accum / 255;
 
         // if (charge_allowed_ && last_voltage_ < VOLTAGE_CUTOFF) {
-        PORTB |= _BV(CHARGE_PIN);
-        /*
+        //PORTB |= _BV(CHARGE_PIN);
         if (!(PINA & _BV(DB_CHG_PIN))) {
             PORTB |= _BV(CHARGE_PIN);
         } else {
             PORTB &= ~_BV(CHARGE_PIN);
         }
-        */
-            // SETBIT(PORTB,0);
+
+        uint32_t kick_pressed = !(PINA & _BV(DB_KICK_PIN)); // active low
+
+        if (kick_pressed) {
+            if (!just_kicked) {
+                PORTB |= _BV(KICK_PIN);
+
+                _delay_ms(8);
+
+                PORTB &= ~_BV(KICK_PIN);
+
+                just_kicked = 1;
+            }
+            // otherwise, wait for button to be released
+        } else {
+            just_kicked = 0;
+        }
+
+        // SETBIT(PORTB,0);
         // } else {
             // PORTA &= ~(_BV(CHARGE_PIN));
         // }
