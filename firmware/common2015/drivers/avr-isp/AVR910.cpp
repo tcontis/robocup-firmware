@@ -83,6 +83,8 @@ bool AVR910::program(FILE* binary, int pageSize, int numPages) {
     if (numPages > 1) {
         while ((c = getc(binary)) != EOF) {
             // Page is fully loaded, time to write it to flash.
+            //printf("page size: %d\r\n", pageSize);
+            //printf("page offset: %d\r\n", pageOffset);
             if (pageOffset == (pageSize)) {
                 writeFlashMemoryPage(pageNumber);
 
@@ -100,13 +102,16 @@ bool AVR910::program(FILE* binary, int pageSize, int numPages) {
             if (highLow == 0) {
                 loadMemoryPage(WRITE_LOW_BYTE, pageOffset, c);
                 highLow = 1;
+                //printf("Writing low\r\n");
             }
             // Write high byte.
             else {
                 loadMemoryPage(WRITE_HIGH_BYTE, pageOffset, c);
                 highLow = 0;
                 pageOffset++;
+                //printf("Writing high\r\n");
             }
+            //printf("PageNumber: %d\r\n", pageNumber);
         }
 
     } else {
@@ -139,7 +144,7 @@ bool AVR910::program(FILE* binary, int pageSize, int numPages) {
     // We might have partially filled up a page.
     writeFlashMemoryPage(pageNumber);
 
-    bool success = checkMemory(pageSize, pageNumber, binary, true);
+    bool success = checkMemory(pageSize, pageNumber + 1, binary, true);
 
     // Leave serial programming mode by toggling reset
     exitProgramming();
@@ -270,6 +275,8 @@ bool AVR910::checkMemory(int pageSize, int numPages, FILE* binary,
                          bool verbose) {
     bool success = true;
 
+    printf("Checking memory? pagesize: %d, numpages: %d \r\n", pageSize, numPages);
+
     // Go back to the beginning of the binary file.
     fseek(binary, 0, SEEK_SET);
 
@@ -293,6 +300,7 @@ bool AVR910::checkMemory(int pageSize, int numPages, FILE* binary,
             c = getc(binary);
             // Read program memory high byte.
             response = readProgramMemory(READ_HIGH_BYTE, page, offset);
+
             if (c != response) {
                 if (verbose) {
                     printf("Page %i high byte %i: 0x%02x\r\n", page, offset,

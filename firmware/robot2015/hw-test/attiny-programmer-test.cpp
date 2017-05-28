@@ -41,7 +41,7 @@ int main() {
 
     pc.printf("Attempting to program...\r\n");
     bool nSuccess =
-        programmer.program(fp, ATTINY84A_PAGESIZE, ATTINY84A_NUM_PAGES);
+        programmer.program(fp, ATTINY_PAGESIZE, ATTINY_NUM_PAGES);
 
     if (nSuccess) {
         pc.printf("Programming failed.\r\n");

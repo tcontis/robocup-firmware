@@ -33,7 +33,7 @@ bool KickerBoard::flash(bool onlyIfDifferent, bool verbose) {
                    0xFF),
         make_tuple("Part Family", AVR_FAMILY_ID,
                    &AVR910::readPartFamilyAndFlashSize, AVR_FAMILY_MASK),
-        make_tuple("Device ID", ATTINY84A_DEVICE_ID, &AVR910::readPartNumber,
+        make_tuple("Device ID", ATTINY_DEVICE_ID, &AVR910::readPartNumber,
                    0xFF),
     };
     for (auto& check : checks) {
@@ -56,7 +56,7 @@ bool KickerBoard::flash(bool onlyIfDifferent, bool verbose) {
         LOG(INIT, "Opened kicker binary, attempting to program kicker.");
         bool shouldProgram = true;
         if (onlyIfDifferent &&
-            (checkMemory(ATTINY84A_PAGESIZE, ATTINY84A_NUM_PAGES, fp, false) ==
+            (checkMemory(ATTINY_PAGESIZE, ATTINY_NUM_PAGES, fp, false) ==
              0))
             shouldProgram = false;
 
@@ -67,7 +67,7 @@ bool KickerBoard::flash(bool onlyIfDifferent, bool verbose) {
             exitProgramming();
         } else {
             bool success =
-                program(fp, ATTINY84A_PAGESIZE, ATTINY84A_NUM_PAGES);
+                program(fp, ATTINY_PAGESIZE, ATTINY_NUM_PAGES);
 
             if (!success) {
                 LOG(WARN, "Failed to program kicker.");
