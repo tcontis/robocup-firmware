@@ -59,9 +59,6 @@
 #define ATTINY_PAGESIZE 64 // Size in words (word = 2 bytes)
 #define ATTINY_NUM_PAGES 128
 
-#define LSB(I) ((I) & 0xFF)
-#define MSB(I) (((I) & 0xF00) >> 8)
-
 /**
  * @brief AVR910 ISP
  *
@@ -191,7 +188,7 @@ private:
      *
      * @param pageNumber The page number to write to in flash memory.
      */
-    void writeFlashMemoryPage(int pageNumber);
+    void writeFlashMemoryPage(char pageNumber);
 
     /**
      * Read a byte from program memory.

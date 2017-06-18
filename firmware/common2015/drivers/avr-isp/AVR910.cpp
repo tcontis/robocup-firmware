@@ -231,7 +231,8 @@ void AVR910::loadMemoryPage(int highLow, char address, char data) {
     chipSelect();
     _spi->write(highLow);
     _spi->write(0x00);
-    _spi->write(address & 0x3F);
+    //_spi->write(address & 0x3F);
+    _spi->write(address & 0x3F); // flash has 64 words, so 6 bits to address all
     _spi->write(data);
     chipDeselect();
 
@@ -247,11 +248,19 @@ void AVR910::writeFlashMemoryByte(int highLow, int address, char data) {
     chipDeselect();
 }
 
-void AVR910::writeFlashMemoryPage(int pageNumber) {
+//
+// 12,11,10,9,8,7,6,5,4,3,2,1,0
+void AVR910::writeFlashMemoryPage(char pageNumber) {
     chipSelect();
     _spi->write(0x4C);
-    _spi->write(MSB(pageNumber << 3));
-    _spi->write(LSB(pageNumber << 3));
+    //_spi->write(0x00);
+    // 13 bits total, 6 for page offset, 7 for page number
+    // top 5 bits stored in bottom of byte
+    _spi->write(pageNumber >> 2);
+    // top 2 bits stored in top of byte
+    _spi->write(pageNumber << 6);
+    //_spi->write(pageNumber >> 3);  // top 5 bits stored in bottom of byte
+    //_spi->write(pageNumber << 5);  // bottom 3 bits stored in top of byte
     _spi->write(0x00);
     chipDeselect();
 
@@ -261,8 +270,8 @@ void AVR910::writeFlashMemoryPage(int pageNumber) {
 char AVR910::readProgramMemory(int highLow, char pageNumber, char pageOffset) {
     chipSelect();
     _spi->write(highLow);
-    _spi->write(MSB(pageNumber << 3));
-    _spi->write(LSB(pageNumber << 3) | (pageOffset & 0x3F));
+    _spi->write(pageNumber >> 2);
+    _spi->write((pageNumber << 6) | (pageOffset & 0x3F));
     char response = _spi->write(0x00);
     chipDeselect();
 

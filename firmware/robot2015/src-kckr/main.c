@@ -57,11 +57,11 @@ void main() {
 
     // disable watchdog
     wdt_reset();
-    MCUSR &= ~(1 << WDRF);
-    WDTCR |= (1 << WDCE) | (1 << WDE);
+    MCUSR &= ~(_BV(WDRF));
+    WDTCR |= (_BV(WDCE)) | (_BV(WDE));
     WDTCR = 0x00;
     /* Outputs */
-    DDRA |= _BV(KICK_PIN) | _BV((CHARGE_PIN));
+    DDRB |= _BV(KICK_PIN) | _BV(CHARGE_PIN);
 
     /* Inputs */
     DDRA &= ~(_BV(N_KICK_CS_PIN) | _BV(KICK_MISO_PIN) | _BV(V_MONITOR_PIN));
@@ -82,11 +82,14 @@ void main() {
     // only have the N_KICK_CS interrupt enabled
     //PCMSK0 = _BV(INT_N_KICK_CS);
 
+    EIMSK |= _BV(INT0);
+
     // enable interrupts for PCINT0-PCINT7
-    PCICR |= PCIE0;
+    PCICR |= _BV(PCIE0);
 
     // enable interrupts on debug buttons
     PCMSK0 = _BV(INT_DB_KICK) | _BV(INT_DB_CHG);
+
 
     // Set low bits corresponding to pin we read from
     ADMUX |= _BV(ADLAR) | 0x00; // connect PA0 (V_MONITOR_PIN) to ADC
@@ -107,6 +110,17 @@ void main() {
     PRR &= ~_BV(PRADC);
     ADCSRA |= _BV(ADEN);   // enable the ADC - Pg. 133
 
+    /*
+    while (true) {
+        if (!(PINA & _BV(DB_CHG_PIN))) {
+            PORTB |= _BV(CHARGE_PIN);
+        } else {
+            PORTB &= ~_BV(CHARGE_PIN);
+        }
+    }
+    */
+
+
     // enable global interrupts
     sei();
 
@@ -123,9 +137,9 @@ void main() {
         last_voltage_ = voltage_accum / 255;
 
         if (charge_allowed_ && last_voltage_ < VOLTAGE_CUTOFF) {
-            PORTA |= _BV(CHARGE_PIN);
+            PORTB |= _BV(CHARGE_PIN);
         } else {
-            PORTA &= ~(_BV(CHARGE_PIN));
+            PORTB &= ~(_BV(CHARGE_PIN));
         }
 
         _delay_ms(VOLTAGE_READ_DELAY_MS);
@@ -166,17 +180,19 @@ ISR(SPI_STC_vect) {
  * ISR for PCINT8 - PCINT11
  */
 ISR(PCINT0_vect) {
-    // First we get the current state of each button
-    int kick_db_pressed = PINB & _BV(DB_KICK_PIN);
-    int charge_db_pressed = PINB & _BV(DB_CHG_PIN);
+    // First we get the current state of each button, active low
+    int kick_db_pressed = !(PINA & _BV(DB_KICK_PIN));
+    int charge_db_pressed = !(PINA & _BV(DB_CHG_PIN));
 
-    // We only will execute commands when the user initially presses the button
-    // So the old button state needs to be LOW and the new button state needs
-    // to be HIGH
     if (!kick_db_held_down_ && kick_db_pressed)
         execute_cmd(KICK_CMD, DB_KICK_TIME);
 
     // toggle charge
+    if (charge_db_pressed)
+        execute_cmd(SET_CHARGE_CMD, ON_ARG);
+    else
+        execute_cmd(SET_CHARGE_CMD, OFF_ARG);
+    /*
     if (!charge_db_down_ && charge_db_pressed) {
         // check if charge is already on, toggle appropriately
         if (PINA & _BV(CHARGE_PIN)) {
@@ -185,6 +201,7 @@ ISR(PCINT0_vect) {
             execute_cmd(SET_CHARGE_CMD, ON_ARG);
         }
     }
+    */
 
     // Now our last state becomes the current state of the buttons
     kick_db_held_down_ = kick_db_pressed;
@@ -203,7 +220,7 @@ ISR(TIMER0_COMPA_vect) {
     // if the counter hits 0, clear the kick/chip pin state
     if (!millis_left_) {
         // could be kicking or chipping, clear both
-        //PORTA &= ~(_BV(KICK_PIN) | _BV(CHIP_PIN));
+        //PORTB &= ~(_BV(KICK_PIN) | _BV(CHIP_PIN));
         // stop prescaled timer
         TCCR0B &= ~_BV(CS01);
     }
@@ -224,7 +241,7 @@ uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
     switch (cmd) {
         case KICK_CMD:
             millis_left_ = arg;
-            PORTA |= _BV(KICK_PIN);  // set KICK pin
+            PORTB |= _BV(KICK_PIN);  // set KICK pin
             TCCR0B |= _BV(CS01);     // start timer /8 prescale
             break;
 
