@@ -61,14 +61,15 @@ void main() {
     WDTCR |= (_BV(WDCE)) | (_BV(WDE));
     WDTCR = 0x00;
     /* Outputs */
+    DDRA |= _BV(KICK_MISO_PIN);
     DDRB |= _BV(KICK_PIN) | _BV(CHARGE_PIN);
 
     /* Inputs */
-    DDRA &= ~(_BV(N_KICK_CS_PIN) | _BV(KICK_MISO_PIN) | _BV(V_MONITOR_PIN));
-    //DDRB &= ~(_BV(V_MONITOR_PIN));
+    DDRA &= ~(_BV(N_KICK_CS_PIN) | _BV(V_MONITOR_PIN) | _BV(KICK_MOSI_PIN));
 
     /* SPI Init */
     SPCR = _BV(SPE) | _BV(SPIE);
+    SPCR &= ~(_BV(MSTR)); // ensure we are a slave SPI device
 
     // when DDRB = 0 and PORTB = 1, these are configured as pull-up inputs,
     // when a button is pressed, these pins are driven towards ground

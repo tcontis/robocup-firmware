@@ -4,7 +4,7 @@
 
 /* Inputs */
 #define N_KICK_CS_PIN (PA6)
-//#define KICK_MOSI_PIN (PORTA6)
+#define KICK_MOSI_PIN (PA4)
 #define V_MONITOR_PIN (PA0)
 // active low buttons
 #define DB_KICK_PIN (PA3)  // should send a normal kick commmand
@@ -19,7 +19,7 @@
 #define KICK_PIN (PB1)
 
 /* Tri-State */
-#define KICK_MISO_PIN (PA2)  // pin 8
+#define KICK_MISO_PIN (PA2)
 
 /* Interrupts for PCMASK0 or PCMASK1 */
 // #define INT_N_KICK_CS (PCINT7)
