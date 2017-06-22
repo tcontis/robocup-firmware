@@ -86,11 +86,16 @@ bool KickerBoard::send_to_kicker(uint8_t cmd, uint8_t arg, uint8_t* ret_val) {
     LOG(INF2, "Sending: CMD:%02X, ARG:%02X", cmd, arg);
     chipSelect();
     // Returns state (charging, not charging), but we don't care about that
-    uint8_t charge_resp = _spi->write(cmd);
+    // uint8_t charge_resp = _spi->write(cmd);
     // Should return the command we just sent
+    _spi->write(cmd);
+    wait_us(1000);
     uint8_t command_resp = _spi->write(arg);
+    wait_us(1000);
     // Should return final response to full cmd, arg pair
     uint8_t ret = _spi->write(BLANK);
+    wait_us(1000);
+    uint8_t state = _spi->write(BLANK);
     chipDeselect();
 
     if (ret_val != nullptr) {
@@ -98,10 +103,11 @@ bool KickerBoard::send_to_kicker(uint8_t cmd, uint8_t arg, uint8_t* ret_val) {
     }
 
     bool command_acked = command_resp == cmd;
-    LOG(INF2, "ACK?:%s, CHG:%02X, CMD:%02X, RET:%02X",
-        command_acked ? "true" : "false", charge_resp, command_resp, ret);
+    LOG(INF2, "ACK?:%s, CMD:%02X, RET:%02X, STT:%02X",
+        command_acked ? "true" : "false", command_resp, ret, state);
+    //LOG(INF2, "REP:%02X", command_resp);
 
-    return command_acked;
+    return true;
 }
 
 bool KickerBoard::kick(uint8_t time) {
@@ -129,14 +135,16 @@ bool KickerBoard::is_pingable() {
 }
 
 bool KickerBoard::is_charge_enabled() {
-    uint8_t ret = 0;
+    //uint8_t ret = 0;
 
+    /*
     chipSelect();
     ret = _spi->write(PING_CMD);
     _spi->write(BLANK);
     _spi->write(BLANK);
     chipDeselect();
+    */
 
     // boolean determined by MSB of 2nd byte
-    return ret == ISCHARGING;
+    return false;
 }

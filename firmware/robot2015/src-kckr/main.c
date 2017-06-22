@@ -12,7 +12,6 @@
 
 #define TIMING_CONSTANT 125
 #define VOLTAGE_READ_DELAY_MS 40
-#define VOLTAGE_CUTOFF 100
 
 // Used to time kick and chip durations
 volatile unsigned millis_left_ = 0;
@@ -34,6 +33,8 @@ volatile bool charge_allowed_ = false;
 // executes a command coming from SPI
 uint8_t execute_cmd(uint8_t, uint8_t);
 
+void init();
+
 /* Voltage Function */
 uint8_t get_voltage() {
     // Start conversation by writing to start bit
@@ -53,6 +54,32 @@ uint8_t get_voltage() {
 bool is_charging() { return PORTB & _BV(CHARGE_PIN); }
 
 void main() {
+    init();
+
+    // needs to be int to force voltage_accum calculation to use ints
+    const int kalpha = 32;
+
+    // We handle voltage readings here
+    while (true) {
+        // get a voltage reading by weighing in a new reading, same concept as
+        // TCP RTT estimates (exponentially weighted sum)
+        last_voltage_ = get_voltage();
+        int voltage_accum =
+            (255 - kalpha) * last_voltage_ + kalpha * get_voltage();
+        last_voltage_ = voltage_accum / 255;
+
+        if (charge_allowed_) {
+            PORTB |= _BV(CHARGE_PIN);
+        } else {
+            PORTB &= ~(_BV(CHARGE_PIN));
+        }
+
+        _delay_ms(VOLTAGE_READ_DELAY_MS);
+
+    }
+}
+
+void init() {
     cli(); // disable interrupts
 
     // disable watchdog
@@ -70,18 +97,6 @@ void main() {
     /* SPI Init */
     SPCR = _BV(SPE) | _BV(SPIE);
     SPCR &= ~(_BV(MSTR)); // ensure we are a slave SPI device
-
-    // when DDRB = 0 and PORTB = 1, these are configured as pull-up inputs,
-    // when a button is pressed, these pins are driven towards ground
-
-    // PORTB refers to pull-up or not
-    /* PORTB |= _BV(DB_KICK_PIN) | _BV(DB_CHIP_PIN) | _BV(DB_CHG_PIN); */
-
-    // ensure debug buttons are inputs
-    /* DDRB &= ~_BV(DB_KICK_PIN) & ~_BV(DB_CHIP_PIN) & ~_BV(DB_CHG_PIN); */
-
-    // only have the N_KICK_CS interrupt enabled
-    //PCMSK0 = _BV(INT_N_KICK_CS);
 
     EIMSK |= _BV(INT0);
 
@@ -111,40 +126,8 @@ void main() {
     PRR &= ~_BV(PRADC);
     ADCSRA |= _BV(ADEN);   // enable the ADC - Pg. 133
 
-    /*
-    while (true) {
-        if (!(PINA & _BV(DB_CHG_PIN))) {
-            PORTB |= _BV(CHARGE_PIN);
-        } else {
-            PORTB &= ~_BV(CHARGE_PIN);
-        }
-    }
-    */
-
-
     // enable global interrupts
     sei();
-
-    // needs to be int to force voltage_accum calculation to use ints
-    const int kalpha = 32;
-
-    // We handle voltage readings here
-    while (true) {
-        // get a voltage reading by weighing in a new reading, same concept as
-        // TCP RTT estimates (exponentially weighted sum)
-        last_voltage_ = get_voltage();
-        int voltage_accum =
-            (255 - kalpha) * last_voltage_ + kalpha * get_voltage();
-        last_voltage_ = voltage_accum / 255;
-
-        if (charge_allowed_ && last_voltage_ < VOLTAGE_CUTOFF) {
-            PORTB |= _BV(CHARGE_PIN);
-        } else {
-            PORTB &= ~(_BV(CHARGE_PIN));
-        }
-
-        _delay_ms(VOLTAGE_READ_DELAY_MS);
-    }
 }
 
 /*
@@ -155,23 +138,25 @@ ISR(SPI_STC_vect) {
     // SPDR contains the data
     uint8_t recv_data = SPDR;
 
+    int NUM_BYTES = 3;
     // increment our received byte count and take appropiate action
-    byte_cnt++;
-    if (byte_cnt == 1) {
+    if (byte_cnt == 0) {
         // we don't have a command already, set the response
         // buffer to the command we received to let the
         // master confirm the given command if desired, top
         // bit is set if currently charging
         cur_command_ = recv_data;
-        SPDR = cur_command_;
-    } else if (byte_cnt == 2) {
+        SPDR = 0x20;
+    } else if (byte_cnt == 1) {
         // execute the currently set command with
         // the newly given argument, set the response
         // buffer to our return value
         SPDR = execute_cmd(cur_command_, recv_data);
-    } else {
-        SPDR = 0x11;
+    } else if (byte_cnt == 2) {
+        SPDR = is_charging();
     }
+    byte_cnt++;
+    byte_cnt %= NUM_BYTES;
 }
 
 /*
@@ -193,7 +178,6 @@ ISR(PCINT0_vect) {
         execute_cmd(SET_CHARGE_CMD, ON_ARG);
     else
         execute_cmd(SET_CHARGE_CMD, OFF_ARG);
-    /*
     if (!charge_db_down_ && charge_db_pressed) {
         // check if charge is already on, toggle appropriately
         if (PINA & _BV(CHARGE_PIN)) {
@@ -202,7 +186,6 @@ ISR(PCINT0_vect) {
             execute_cmd(SET_CHARGE_CMD, ON_ARG);
         }
     }
-    */
 
     // Now our last state becomes the current state of the buttons
     kick_db_held_down_ = kick_db_pressed;
@@ -221,7 +204,7 @@ ISR(TIMER0_COMPA_vect) {
     // if the counter hits 0, clear the kick/chip pin state
     if (!millis_left_) {
         // could be kicking or chipping, clear both
-        //PORTB &= ~(_BV(KICK_PIN) | _BV(CHIP_PIN));
+        PORTB &= ~_BV(KICK_PIN);
         // stop prescaled timer
         TCCR0B &= ~_BV(CS01);
     }
@@ -255,8 +238,10 @@ uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
         case SET_CHARGE_CMD:
             // set state based on argument
             if (arg == ON_ARG) {
+                ret_val = 1;
                 charge_allowed_ = true;
             } else if (arg == OFF_ARG) {
+                ret_val = 0;
                 charge_allowed_ = false;
             }
             break;
@@ -266,14 +251,15 @@ uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
             break;
 
         case PING_CMD:
+            ret_val = 0xFF;
             // do nothing, ping is just a way to check if the kicker
             // is connected by checking the returned command ack from
             // earlier.
             break;
 
         default:
-            ret_val =
-                0xCC;  // return a weird value to show arg wasn't recognized
+            // return error value to show arg wasn't recognized
+            ret_val = 0xCC;  // return a weird value to show arg wasn't recognized
             break;
     }
 

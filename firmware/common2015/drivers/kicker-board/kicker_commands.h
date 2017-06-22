@@ -17,11 +17,15 @@
  * SPI Conversation Initiated.
  * Byte  |  Control Board   |   Kickerboard
  * ----------------------------------------------
- * 0     |    command       |   charging state
+ * 0     |    command       |   state
  * 1     |    argument      |   command (ack)
  * 2     |    NOP           |   command response
  * ----------------------------------------------
+ * state is a bit field
  */
+
+#define CHARGE_FIELD 0x01
+#define BALL_SENSE_FIELD 0x02
 
 /* Commands */
 #define KICK_CMD 0x01
@@ -34,8 +38,8 @@
 #define BLANK 0x00  // Used for clarity when passing useless arguments
 // Kick/Chip arguments
 #define MAX_TIME_ARG 0xFF  // Used if we want to wait max time
-#define DB_KICK_TIME 0x08  // Used for button press kick
-#define DB_CHIP_TIME 0x08  // Used for button press chip
+#define DB_KICK_TIME 8  // Used for button press kick
+#define DB_CHIP_TIME 8  // Used for button press chip
 // Charge command arguments
 #define ON_ARG 0x38   // Used for setting charge high
 #define OFF_ARG 0x1A  // Used for setting charge low
