@@ -68,7 +68,8 @@ void main() {
             (255 - kalpha) * last_voltage_ + kalpha * get_voltage();
         last_voltage_ = voltage_accum / 255;
 
-        if (charge_allowed_) {
+        /* Don't allow charging during a kick */
+        if (charge_allowed_ && millis_left_ == 0) {
             PORTB |= _BV(CHARGE_PIN);
         } else {
             PORTB &= ~(_BV(CHARGE_PIN));
@@ -98,8 +99,6 @@ void init() {
     SPCR = _BV(SPE) | _BV(SPIE);
     SPCR &= ~(_BV(MSTR)); // ensure we are a slave SPI device
 
-    EIMSK |= _BV(INT0);
-
     // enable interrupts for PCINT0-PCINT7
     PCICR |= _BV(PCIE0);
 
@@ -121,7 +120,6 @@ void init() {
     // if we prescale by 8, then we need 125 on timer to get 1 ms exactly
     OCR0A = TIMING_CONSTANT;  // reset every millisecond
 
-    /* Analog to digital converter setup */
     // ensure ADC isn't shut off
     PRR &= ~_BV(PRADC);
     ADCSRA |= _BV(ADEN);   // enable the ADC - Pg. 133
@@ -138,8 +136,8 @@ ISR(SPI_STC_vect) {
     // SPDR contains the data
     uint8_t recv_data = SPDR;
 
-    int NUM_BYTES = 3;
-    // increment our received byte count and take appropiate action
+    SPDR = 0xFF;
+    // increment our received byte count and take appropriate action
     if (byte_cnt == 0) {
         // we don't have a command already, set the response
         // buffer to the command we received to let the
@@ -155,6 +153,7 @@ ISR(SPI_STC_vect) {
     } else if (byte_cnt == 2) {
         SPDR = is_charging();
     }
+    int NUM_BYTES = 3;
     byte_cnt++;
     byte_cnt %= NUM_BYTES;
 }
@@ -225,6 +224,10 @@ uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
     switch (cmd) {
         case KICK_CMD:
             millis_left_ = arg;
+
+            /* Turn off charging during kick */
+            PORTB &= ~(_BV(CHARGE_PIN));
+
             PORTB |= _BV(KICK_PIN);  // set KICK pin
             TCCR0B |= _BV(CS01);     // start timer /8 prescale
             break;
