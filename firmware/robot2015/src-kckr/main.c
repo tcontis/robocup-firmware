@@ -75,6 +75,10 @@ void main() {
             PORTB &= ~(_BV(CHARGE_PIN));
         }
 
+        if (!(PORTB & _BV(N_KICK_CS_PIN))) {
+            byte_cnt = 0;
+        }
+
         _delay_ms(VOLTAGE_READ_DELAY_MS);
 
     }
