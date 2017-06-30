@@ -41,10 +41,10 @@ public:
      * @brief Sends the KickerBoard a command to kick for the allotted time in
      *     in milliseconds. This roughly corresponds to kick strength.
      *
-     * @param time Millisecond kick time, can only range from 0 to 255 ms
+     * @param Kicker strength, eventually gets mapped to duty cycle
      * @return If the kick command was acknowledged
      */
-    bool kick(uint8_t time);
+    bool kick(uint8_t strength, bool immediate);
 
     /**
      * @brief Sends the KickerBoard a command to chip for the allotted time in
@@ -52,7 +52,7 @@ public:
      * @param time Millisecond chip time, can only range from 0 to 255 ms
      * @return If the chip command was acknowledged
      */
-    bool chip(uint8_t time);
+    //bool chip(uint8_t time);
 
     /**
      * @brief Reads the charge voltage back from the KickerBoard.

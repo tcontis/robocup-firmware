@@ -105,17 +105,13 @@ bool KickerBoard::send_to_kicker(uint8_t cmd, uint8_t arg, uint8_t* ret_val) {
     bool command_acked = command_resp == cmd;
     LOG(INF2, "ACK?:%s, CMD:%02X, RET:%02X, STT:%02X",
         command_acked ? "true" : "false", command_resp, ret, state);
-    //LOG(INF2, "REP:%02X", command_resp);
 
     return true;
 }
 
-bool KickerBoard::kick(uint8_t time) {
-    return send_to_kicker(KICK_CMD, time, nullptr);
-}
-
-bool KickerBoard::chip(uint8_t time) {
-    return send_to_kicker(CHIP_CMD, time, nullptr);
+bool KickerBoard::kick(uint8_t strength, bool immediate) {
+    return send_to_kicker(immediate ? KICK_IMMEDIATE_CMD : KICK_BREAKBEAM_CMD,
+                          strength, nullptr);
 }
 
 bool KickerBoard::read_voltage(uint8_t* voltage) {

@@ -17,22 +17,21 @@
  * SPI Conversation Initiated.
  * Byte  |  Control Board   |   Kickerboard
  * ----------------------------------------------
- * 0     |    command       |   state
- * 1     |    argument      |   command (ack)
- * 2     |    NOP           |   command response
+ * 0     |    command       |   *
+ * 1     |    argument      |   command acknowledgement
+ * 2     |    *             |   command response
  * ----------------------------------------------
- * state is a bit field
  */
 
 #define CHARGE_FIELD 0x01
 #define BALL_SENSE_FIELD 0x02
 
 /* Commands */
-#define KICK_CMD 0x01
-#define CHIP_CMD 0x02
-#define SET_CHARGE_CMD 0x03
-#define GET_VOLTAGE_CMD 0x04
-#define PING_CMD 0x05
+#define KICK_IMMEDIATE_CMD 0x01
+#define KICK_BREAKBEAM_CMD 0x02
+#define SET_CHARGE_CMD 0x04
+#define GET_VOLTAGE_CMD 0x05
+#define PING_CMD 0x06
 
 /* Arguments */
 #define BLANK 0x00  // Used for clarity when passing useless arguments
@@ -45,6 +44,9 @@
 #define OFF_ARG 0x1A  // Used for setting charge low
 
 /* Response Codes, charging/not charging */
-// Charging state
-#define ISCHARGING 0x80
-#define NOTCHARGING 0x84
+#define ACK 0x77;
+
+/* Kicker status */
+//#define CHARGING (_BV(0))
+//#define BALL_SENSE (_BV(1)) // not implemented yet
+#define CHARGING 0

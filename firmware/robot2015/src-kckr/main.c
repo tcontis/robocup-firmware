@@ -68,11 +68,11 @@ void main() {
             (255 - kalpha) * last_voltage_ + kalpha * get_voltage();
         last_voltage_ = voltage_accum / 255;
 
-        /* Don't allow charging during a kick */
-        if (charge_allowed_ && millis_left_ == 0) {
-            PORTB |= _BV(CHARGE_PIN);
-        } else {
+        // keep voltage between 235 and 240
+        if (last_voltage_ > 240) {
             PORTB &= ~(_BV(CHARGE_PIN));
+        } else if (last_voltage_ < 235 && charge_allowed_) {
+            PORTB |= _BV(CHARGE_PIN);
         }
 
         if (!(PORTB & _BV(N_KICK_CS_PIN))) {
@@ -143,19 +143,16 @@ ISR(SPI_STC_vect) {
     SPDR = 0xFF;
     // increment our received byte count and take appropriate action
     if (byte_cnt == 0) {
-        // we don't have a command already, set the response
-        // buffer to the command we received to let the
-        // master confirm the given command if desired, top
-        // bit is set if currently charging
         cur_command_ = recv_data;
-        SPDR = 0x20;
+        // kicker status fields
+        SPDR |= ACK;
     } else if (byte_cnt == 1) {
         // execute the currently set command with
         // the newly given argument, set the response
         // buffer to our return value
         SPDR = execute_cmd(cur_command_, recv_data);
     } else if (byte_cnt == 2) {
-        SPDR = is_charging();
+        SPDR |= (is_charging() << CHARGING);
     }
     int NUM_BYTES = 3;
     byte_cnt++;
@@ -174,7 +171,7 @@ ISR(PCINT0_vect) {
     int charge_db_pressed = !(PINA & _BV(DB_CHG_PIN));
 
     if (!kick_db_held_down_ && kick_db_pressed)
-        execute_cmd(KICK_CMD, DB_KICK_TIME);
+        execute_cmd(KICK_IMMEDIATE_CMD, 255); // max strength kick
 
     // toggle charge
     if (charge_db_pressed)
@@ -207,9 +204,15 @@ ISR(TIMER0_COMPA_vect) {
     // if the counter hits 0, clear the kick/chip pin state
     if (!millis_left_) {
         // could be kicking or chipping, clear both
+        // timing issue was preventing kick pin from clearing?
+        PORTB &= ~_BV(KICK_PIN);
+        PORTB &= ~_BV(KICK_PIN);
+        PORTB &= ~_BV(KICK_PIN);
         PORTB &= ~_BV(KICK_PIN);
         // stop prescaled timer
         TCCR0B &= ~_BV(CS01);
+
+        charge_allowed_ = true;
     }
 }
 
@@ -226,8 +229,10 @@ uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
     uint8_t ret_val = BLANK;
 
     switch (cmd) {
-        case KICK_CMD:
-            millis_left_ = arg;
+        case KICK_BREAKBEAM_CMD: // we don't support kick on break beam right now :/
+        case KICK_IMMEDIATE_CMD:
+            // arg contains 0-255 strength, map to 0-12 ms?
+            millis_left_ = (int) (arg / 255.0) * 12;
 
             /* Turn off charging during kick */
             PORTB &= ~(_BV(CHARGE_PIN));
@@ -236,11 +241,6 @@ uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
             TCCR0B |= _BV(CS01);     // start timer /8 prescale
             break;
 
-        case CHIP_CMD:
-            millis_left_ = arg;
-            //PORTA |= _BV(CHIP_PIN);  // set CHIP pin
-            TCCR0B |= _BV(CS01);     // start timer /8 prescale
-            break;
 
         case SET_CHARGE_CMD:
             // set state based on argument

@@ -10,7 +10,7 @@
 #include <logger.hpp>
 #include <watchdog.hpp>
 
-#include "BallSense.hpp"
+//#include "BallSense.hpp"
 // #include "CC1201.cpp"
 #include "Decawave.hpp"
 #include "HackedKickerBoard.hpp"
@@ -110,9 +110,6 @@ int main() {
     sharedSPI->format(8, 0);  // 8 bits per transfer
 
     // Initialize kicker board
-    // HackedKickerBoard::Instance =
-    // make_shared<HackedKickerBoard>(RJ_KICKER_nRESET);
-    // HackedKickerBoard kick_hack(RJ_KICKER_nRESET);
     // Reprogramming each time (first arg of flash false) is actually
     // faster than checking the full memory to see if we need to reflash.
     KickerBoard::Instance = 
@@ -121,29 +118,6 @@ int main() {
 
     // flag fro kicking when the ball sense triggers
     bool kickOnBreakBeam = false;
-    // Made up value right now, this is the amount of time in ms to
-    // allow the capacitor dump power into kicker. Will need to be
-    // adjusted once hardware is available.
-    uint8_t kickStrength = 0x08;  // DB_KICK_TIME;
-
-    // Initialize and start ball sensor
-    BallSense ballSense(RJ_BALL_EMIT, RJ_BALL_DETECTOR);
-    ballSense.start(10);
-    ballSense.senseChangeCallback = [&](bool haveBall) {
-        // invert value due to active-low wiring of led
-        // set ball indicator led.
-        static DigitalOut ballStatusPin(RJ_BALL_LED);
-        ballStatusPin = !haveBall;
-
-        // kick!
-        if (haveBall && kickOnBreakBeam) {
-            //kick_hack.kick(kickStrength);
-            KickerBoard::Instance->kick(kickStrength);
-        }
-    };
-    // uintptr_t p = (uintptr_t)(void*)&sharedSPI;
-    // LOG(INIT, "test 0 %p %d",(int)&sharedSPI, *reinterpret_cast<char
-    // *>((void*)&sharedSPI));
 
     // Initialize and configure the fpga with the given bitfile
     FPGA::Instance = new FPGA(sharedSPI, RJ_FPGA_nCS, RJ_FPGA_INIT_B,
@@ -263,29 +237,20 @@ int main() {
                 // dribbler
                 Task_Controller_UpdateDribbler(msg->dribbler);
 
+                uint8_t kickStrength = msg->kickStrength;
+
                 // kick!
-                kickStrength = msg->kickStrength;
-                if (msg->triggerMode == 1) {
-                    // kick immediate
-                    //kick_hack.kick(kickStrength);
-                    KickerBoard::Instance->kick(kickStrength);
-                } else if (msg->triggerMode == 2) {
-                    // kick on break beam
-                    if (ballSense.have_ball()) {
-                        //kick_hack.kick(kickStrength);
-                        KickerBoard::Instance->kick(kickStrength);
-                        kickOnBreakBeam = false;
-                    } else {
-                        // set flag so that next break beam triggers a kick
-                        kickOnBreakBeam = true;
-                    }
+                if (kickStrength) {
+                    // immediate vs on break bream
+                    bool immediate = msg->triggerMode == 1;
+                    KickerBoard::Instance->kick(kickStrength, immediate);
                 }
             }
 
             rtp::RobotStatusMessage reply;
             reply.uid = robotShellID;
             reply.battVoltage = battVoltage;
-            reply.ballSenseStatus = ballSense.have_ball() ? 1 : 0;
+            // reply.ballSenseStatus = ballSense.have_ball() ? 1 : 0;
 
             // report any motor errors
             reply.motorErrors = 0;
@@ -305,8 +270,12 @@ int main() {
 
             // kicker status
             //reply.kickStatus = kick_hack.canKick();
-            //reply.kickStatus = KickerBoard::Instance->canKick();
-            reply.kickStatus = true;
+
+            uint8_t kicker_volts = 0;
+            // this logic should probably be hidden inside kicker class
+            if (KickerBoard::Instance->read_voltage(&kicker_volts)) {
+                reply.kickStatus = kicker_volts > 230;
+            }
 
             vector<uint8_t> replyBuf;
             rtp::SerializeToVector(reply, &replyBuf);
@@ -314,6 +283,7 @@ int main() {
             return replyBuf;
         };
 
+    // just leave charging on
     KickerBoard::Instance->charge();
     LOG(INIT, "Started charging kicker board.");
     uint8_t kickerVoltage = 0;
