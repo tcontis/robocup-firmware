@@ -69,9 +69,9 @@ void main() {
         last_voltage_ = voltage_accum / 255;
 
         /* Don't allow charging during a kick */
-        if (charge_allowed_ && millis_left_ == 0) {
+        if (last_voltage_ < 230 && millis_left_ == 0) {
             PORTB |= _BV(CHARGE_PIN);
-        } else {
+        } else if (last_voltage_ > 240) {
             PORTB &= ~(_BV(CHARGE_PIN));
         }
 
@@ -80,7 +80,6 @@ void main() {
         }
 
         _delay_ms(VOLTAGE_READ_DELAY_MS);
-
     }
 }
 
@@ -206,7 +205,6 @@ ISR(TIMER0_COMPA_vect) {
 
     // if the counter hits 0, clear the kick/chip pin state
     if (!millis_left_) {
-        // could be kicking or chipping, clear both
         PORTB &= ~_BV(KICK_PIN);
         // stop prescaled timer
         TCCR0B &= ~_BV(CS01);
