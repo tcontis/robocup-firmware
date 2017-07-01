@@ -9,6 +9,7 @@
 using namespace std;
 
 #define COMM_MODULE_SIGNAL_START_THREAD (1 << 0)
+#define COMM_MODULE_TX_RX (1 << 1)
 
 std::shared_ptr<CommModule> CommModule::Instance;
 
@@ -26,8 +27,8 @@ CommModule::CommModule(std::shared_ptr<FlashingTimeoutLED> rxTimeoutLED,
       _rxTimeoutLED(rxTimeoutLED),
       _txTimeoutLED(txTimeoutLED) {
     // Create the data queues.
-    _txQueue = osMailCreate(_txQueueHelper.def(), nullptr);
-    _rxQueue = osMailCreate(_rxQueueHelper.def(), nullptr);
+    // _txQueue = osMailCreate(_txQueueHelper.def(), nullptr);
+    // _rxQueue = osMailCreate(_rxQueueHelper.def(), nullptr);
 }
 
 void CommModule::rxThreadHelper(void const* moduleInst) {
@@ -57,38 +58,63 @@ void CommModule::txThread() {
     while (true) {
         // When a new rtp::packet is put in the TX queue, begin operations (does
         // nothing if no new data in queue)
-        osEvent evt = osMailGet(_txQueue, osWaitForever);
+        // osEvent evt = osMailGet(_txQueue, osWaitForever);
+        Thread::signal_wait(COMM_MODULE_TX_RX);
 
-        if (evt.status == osEventMail) {
-            // Get a pointer to the packet's memory location
-            rtp::packet* p = (rtp::packet*)evt.value.p;
+        rtp::packet* p = &txPacket;
+        // Bump up the thread's priority
+        osStatus tState = _txThread.set_priority(osPriorityRealtime);
+        ASSERT(tState == osOK);
 
-            // Bump up the thread's priority
-            osStatus tState = _txThread.set_priority(osPriorityRealtime);
-            ASSERT(tState == osOK);
-
-            // this renews a countdown for turning off the
-            // strobing thread once it expires
-            if (p->header.address != rtp::LOOPBACK_ADDRESS && _txTimeoutLED) {
-                _txTimeoutLED->renew();
-            }
-
-            // Call the user callback function
-            if (_ports.find(p->header.port) != _ports.end() &&
-                _ports[p->header.port].txCallback() != nullptr) {
-                _ports[p->header.port].txCallback()(p);
-                _ports[p->header.port].txCount++;
-
-                // LOG(INF2, "Transmission:\r\n    Port:\t%u\r\n",
-                // p->header.port);
-            }
-
-            // Release the allocated memory once data is sent
-            osMailFree(_txQueue, p);
-
-            tState = _txThread.set_priority(threadPriority);
-            ASSERT(tState == osOK);
+        // this renews a countdown for turning off the
+        // strobing thread once it expires
+        if (p->header.address != rtp::LOOPBACK_ADDRESS && _txTimeoutLED) {
+            _txTimeoutLED->renew();
         }
+
+        // Call the user callback function
+        if (_ports.find(p->header.port) != _ports.end() &&
+            _ports[p->header.port].txCallback() != nullptr) {
+            _ports[p->header.port].txCallback()(p);
+            _ports[p->header.port].txCount++;
+
+            // LOG(INF2, "Transmission:\r\n    Port:\t%u\r\n",
+            // p->header.port);
+        }
+
+        tState = _txThread.set_priority(threadPriority);
+        ASSERT(tState == osOK);
+
+        // if (evt.status == osEventMail) {
+        //     // Get a pointer to the packet's memory location
+        //     rtp::packet* p = (rtp::packet*)evt.value.p;
+        //
+        //     // Bump up the thread's priority
+        //     osStatus tState = _txThread.set_priority(osPriorityRealtime);
+        //     ASSERT(tState == osOK);
+        //
+        //     // this renews a countdown for turning off the
+        //     // strobing thread once it expires
+        //     if (p->header.address != rtp::LOOPBACK_ADDRESS && _txTimeoutLED) {
+        //         _txTimeoutLED->renew();
+        //     }
+        //
+        //     // Call the user callback function
+        //     if (_ports.find(p->header.port) != _ports.end() &&
+        //         _ports[p->header.port].txCallback() != nullptr) {
+        //         _ports[p->header.port].txCallback()(p);
+        //         _ports[p->header.port].txCount++;
+        //
+        //         // LOG(INF2, "Transmission:\r\n    Port:\t%u\r\n",
+        //         // p->header.port);
+        //     }
+        //
+        //     // Release the allocated memory once data is sent
+        //     osMailFree(_txQueue, p);
+        //
+        //     tState = _txThread.set_priority(threadPriority);
+        //     ASSERT(tState == osOK);
+        // }
     }
 }
 
@@ -108,41 +134,66 @@ void CommModule::rxThread() {
         ((P_TCB)_rxThread.gettid())->task_id, threadPriority);
 
     while (true) {
-        // Wait until new data is placed in the class's RX queue from a CommLink
-        // class
-        osEvent evt = osMailGet(_rxQueue, osWaitForever);
+        // // Wait until new data is placed in the class's RX queue from a CommLink
+        // // class
+        // osEvent evt = osMailGet(_rxQueue, osWaitForever);
 
         // wait_ms(25);
 
-        if (evt.status == osEventMail) {
-            // get a pointer to where the data is stored
-            rtp::packet* p = (rtp::packet*)evt.value.p;
+        Thread::signal_wait(COMM_MODULE_TX_RX);
+        rtp::packet* p = &rxPacket;
 
-            // Bump up the thread's priority
-            osStatus tState = _rxThread.set_priority(osPriorityRealtime);
-            ASSERT(tState == osOK);
+        // Bump up the thread's priority
+        osStatus tState = _rxThread.set_priority(osPriorityRealtime);
+        ASSERT(tState == osOK);
 
-            // this renews a countdown for turning off the strobing thread once
-            // it expires
-            if (p->header.address != rtp::LOOPBACK_ADDRESS && _rxTimeoutLED) {
-                _rxTimeoutLED->renew();
-            }
-
-            // Call the user callback function (if set)
-            if (_ports.find(p->header.port) != _ports.end() &&
-                _ports[p->header.port].rxCallback() != nullptr) {
-                _ports[p->header.port].rxCallback()(std::move(*p));
-                _ports[p->header.port].rxCount++;
-
-                // LOG(INF2, "Reception:\r\n    Port:\t%u\r\n", p->header.port);
-            }
-
-            // free memory allocated for mail
-            osMailFree(_rxQueue, p);
-
-            tState = _rxThread.set_priority(threadPriority);
-            ASSERT(tState == osOK);
+        // this renews a countdown for turning off the strobing thread once
+        // it expires
+        if (p->header.address != rtp::LOOPBACK_ADDRESS && _rxTimeoutLED) {
+            _rxTimeoutLED->renew();
         }
+
+        // Call the user callback function (if set)
+        if (_ports.find(p->header.port) != _ports.end() &&
+            _ports[p->header.port].rxCallback() != nullptr) {
+            _ports[p->header.port].rxCallback()(std::move(*p));
+            _ports[p->header.port].rxCount++;
+
+            // LOG(INF2, "Reception:\r\n    Port:\t%u\r\n", p->header.port);
+        }
+
+        tState = _rxThread.set_priority(threadPriority);
+        ASSERT(tState == osOK);
+
+        // if (evt.status == osEventMail) {
+        //     // get a pointer to where the data is stored
+        //     rtp::packet* p = (rtp::packet*)evt.value.p;
+        //
+        //     // Bump up the thread's priority
+        //     osStatus tState = _rxThread.set_priority(osPriorityRealtime);
+        //     ASSERT(tState == osOK);
+        //
+        //     // this renews a countdown for turning off the strobing thread once
+        //     // it expires
+        //     if (p->header.address != rtp::LOOPBACK_ADDRESS && _rxTimeoutLED) {
+        //         _rxTimeoutLED->renew();
+        //     }
+        //
+        //     // Call the user callback function (if set)
+        //     if (_ports.find(p->header.port) != _ports.end() &&
+        //         _ports[p->header.port].rxCallback() != nullptr) {
+        //         _ports[p->header.port].rxCallback()(std::move(*p));
+        //         _ports[p->header.port].rxCount++;
+        //
+        //         // LOG(INF2, "Reception:\r\n    Port:\t%u\r\n", p->header.port);
+        //     }
+        //
+        //     // free memory allocated for mail
+        //     osMailFree(_rxQueue, p);
+        //
+        //     tState = _rxThread.set_priority(threadPriority);
+        //     ASSERT(tState == osOK);
+        // }
     }
 }
 
@@ -173,17 +224,20 @@ void CommModule::send(rtp::packet packet) {
     if (_ports.find(packet.header.port) != _ports.end() &&
         _ports[packet.header.port].txCallback() != nullptr) {
         // Allocate a block of memory for the data.
-        rtp::packet* p = (rtp::packet*)osMailAlloc(_txQueue, osWaitForever);
-        if (!p) {
-            LOG(FATAL, "Unable to allocate packet onto mail queue");
-            return;
-        }
+        // rtp::packet* p = (rtp::packet*)osMailAlloc(_txQueue, osWaitForever);
+        // if (!p) {
+        //     LOG(FATAL, "Unable to allocate packet onto mail queue");
+        //     return;
+        // }
+        //TODO add lock?
+        txPacket = packet;
+        _txThread.signal_set(COMM_MODULE_TX_RX);
 
         // Copy the contents into the allocated memory block
-        *p = std::move(packet);
+        // *p = std::move(packet);
 
         // Place the passed packet into the txQueue.
-        osMailPut(_txQueue, p);
+        // osMailPut(_txQueue, p);
 
     } else {
         LOG(WARN,
@@ -198,18 +252,20 @@ void CommModule::receive(rtp::packet packet) {
     if (_ports.find(packet.header.port) != _ports.end() &&
         _ports[packet.header.port].rxCallback() != nullptr) {
         // Allocate a block of memory for the data.
-        rtp::packet* p = (rtp::packet*)osMailAlloc(_rxQueue, osWaitForever);
-        if (!p) {
-            LOG(FATAL, "Unable to allocate packet onto mail queue");
-            return;
-        }
-
-        // Copy the contents into the allocated memory block
-        // TODO: move semantics
-        *p = std::move(packet);
-
-        // Place the passed packet into the rxQueue.
-        osMailPut(_rxQueue, p);
+        // rtp::packet* p = (rtp::packet*)osMailAlloc(_rxQueue, osWaitForever);
+        // if (!p) {
+        //     LOG(FATAL, "Unable to allocate packet onto mail queue");
+        //     return;
+        // }
+        //
+        // // Copy the contents into the allocated memory block
+        // // TODO: move semantics
+        // *p = std::move(packet);
+        //
+        // // Place the passed packet into the rxQueue.
+        // osMailPut(_rxQueue, p);
+        rxPacket = packet;
+        _rxThread.signal_set(COMM_MODULE_TX_RX);
     } else {
         LOG(WARN,
             "Failed to receive %u byte packet: There is no open receiving "

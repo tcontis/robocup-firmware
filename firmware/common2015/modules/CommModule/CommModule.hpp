@@ -90,8 +90,12 @@ public:
 
 protected:
     // Memory Queue IDs
-    osMailQId _txQueue;
-    osMailQId _rxQueue;
+    // osMailQId _txQueue;
+    // osMailQId _rxQueue;
+    Mutex txMutex;
+    Mutex rxMutex;
+    rtp::packet txPacket;
+    rtp::packet rxPacket;
 
 private:
     // The working threads for handling rx and tx data queues
@@ -110,8 +114,8 @@ private:
     Thread _rxThread, _txThread;
 
     // Mail helper objects
-    MailHelper<rtp::packet, TX_QUEUE_SIZE> _txQueueHelper;
-    MailHelper<rtp::packet, RX_QUEUE_SIZE> _rxQueueHelper;
+    // MailHelper<rtp::packet, TX_QUEUE_SIZE> _txQueueHelper;
+    // MailHelper<rtp::packet, RX_QUEUE_SIZE> _rxQueueHelper;
 
     std::shared_ptr<FlashingTimeoutLED> _rxTimeoutLED, _txTimeoutLED;
 };
