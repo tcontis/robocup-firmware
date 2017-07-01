@@ -264,7 +264,7 @@ int main() {
                 Task_Controller_UpdateDribbler(msg->dribbler);
 
                 // kick!
-                kickStrength = msg->kickStrength;
+                //kickStrength = msg->kickStrength;
                 if (msg->triggerMode == 1) {
                     // kick immediate
                     //kick_hack.kick(kickStrength);
