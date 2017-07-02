@@ -69,11 +69,19 @@ void main() {
         last_voltage_ = voltage_accum / 255;
 
         /* Don't allow charging during a kick */
-        if (last_voltage_ < 230 && millis_left_ == 0) {
+        if (charge_allowed_ && last_voltage_ < 235 && millis_left_ == 0) {
+        //if (last_voltage_ < 90 && millis_left_ == 0) {
             PORTB |= _BV(CHARGE_PIN);
         } else if (last_voltage_ > 240) {
             PORTB &= ~(_BV(CHARGE_PIN));
         }
+            /*
+        if (charge_allowed_) {
+            PORTB |= _BV(CHARGE_PIN);
+        } else {
+            PORTB &= ~(_BV(CHARGE_PIN));
+        }
+            */
 
         if (!(PORTB & _BV(N_KICK_CS_PIN))) {
             byte_cnt = 0;
@@ -225,7 +233,7 @@ uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
 
     switch (cmd) {
         case KICK_CMD:
-            millis_left_ = arg;
+            millis_left_ = 15;
 
             /* Turn off charging during kick */
             PORTB &= ~(_BV(CHARGE_PIN));
