@@ -51,8 +51,8 @@ public:
 
         std::array<int16_t, 4> dutyCycles;
         for (int i = 0; i < 4; i++) {
-            int16_t dc =
-                targetWheelVels[i] * RobotModel2015.DutyCycleMultiplier;
+            int16_t dc = targetWheelVels[i] * RobotModel2015.DutyCycleMultiplier;
+            //int16_t dc = _controllers[i].run(wheelVelErr[i]);
             dc += _controllers[i].run(wheelVelErr[i]);
 
             dutyCycles[i] = dc;
