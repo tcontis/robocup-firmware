@@ -46,8 +46,25 @@ public:
 
         Eigen::Vector4f targetWheelVels =
             RobotModel2015.BotToWheel * _targetVel;
+        // Forwards
+        //Eigen::Vector4f targetWheelVels(.288675, .32169, -.32169, -.288675);
+        //Eigen::Vector4f targetWheelVels(.32169, .288675, -.288675, -.32169);
+
+        /*
+        float front = .34641;
+        float back = .257352;
+        Eigen::Vector4f targetWheelVels(front, back, -back, -front);
+        */
+        //Eigen::Vector4f targetWheelVels(.4, -.317803, -.476705, .6);
+
+        // Right
+        //Eigen::Vector4f targetWheelVels(.5, -.397254, -.397254, .5);
+        //Eigen::Vector4f targetWheelVels(.397254, -.5, -.5, .397254);
+        //Eigen::Vector4f targetWheelVels(0, 0, 0, 1);
+        //targetWheelVels /= RobotModel2015.WheelRadius;
 
         Eigen::Vector4f wheelVelErr = targetWheelVels - wheelVels;
+
 
         std::array<int16_t, 4> dutyCycles;
         for (int i = 0; i < 4; i++) {
@@ -62,11 +79,16 @@ public:
 // graphed to visualize pid control and debug problems
 #if 0
         printf("{\r\n");
+        /*
         printf("'encDelt': [%d, %d, %d, %d],\r\n", encoderDeltas[0], encoderDeltas[1], encoderDeltas[2], encoderDeltas[3]);
         printf("'dt': %f,\r\n", dt);
-        printf("'wheelVels': [%f, %f, %f, %f],\r\n", wheelVels[0], wheelVels[1], wheelVels[2], wheelVels[3]);
-        printf("'targetWheelVels': [%f, %f, %f, %f],\r\n", targetWheelVels[0], targetWheelVels[1], targetWheelVels[2], targetWheelVels[3]);
+        */
+        printf("'targetVel': [%f, %f, %f]", _targetVel[0], _targetVel[1], _targetVel[2]);
+        //printf("'wheelVels': [%f, %f, %f, %f],\r\n", wheelVels[0], wheelVels[1], wheelVels[2], wheelVels[3]);
+        //printf("'targetWheelVels': [%f, %f, %f, %f],\r\n", targetWheelVels[0], targetWheelVels[1], targetWheelVels[2], targetWheelVels[3]);
+        /*
         printf("'duty': [%d, %d, %d, %d],\r\n", dutyCycles[0], dutyCycles[1], dutyCycles[2], dutyCycles[3]);
+        */
         printf("},\r\n");
 #endif
 

@@ -26,12 +26,15 @@ public:
         // See this paper for more info on how this matrix is derived:
         // http://people.idsia.ch/~foerster/2006/1/omnidrive_kiart_preprint.pdf
 
+        // Factor WheelDist (R) into this matrix
         // clang-format off
         BotToWheel <<
-            sinf(WheelAngles[0]), cosf(WheelAngles[0]), -WheelDist,
-            sinf(WheelAngles[1]), cosf(WheelAngles[1]), -WheelDist,
-            sinf(WheelAngles[2]), cosf(WheelAngles[2]), -WheelDist,
-            sinf(WheelAngles[3]), cosf(WheelAngles[3]), -WheelDist;
+            -sinf(WheelAngles[0]), cosf(WheelAngles[0]), WheelDist,
+            -sinf(WheelAngles[1]), cosf(WheelAngles[1]), WheelDist,
+            -sinf(WheelAngles[2]), cosf(WheelAngles[2]), WheelDist,
+            -sinf(WheelAngles[3]), cosf(WheelAngles[3]), WheelDist;
+        // Invert because our wheels spin opposite to paper
+        BotToWheel *= -1;
         BotToWheel /= WheelRadius;
         // clang-format on
     }
