@@ -2,6 +2,7 @@
 
 #include <array>
 #include "Pid.hpp"
+#include "fpga.hpp"
 #include "RobotModel.hpp"
 
 /**
@@ -11,10 +12,6 @@ class PidMotionController {
 public:
     PidMotionController() {
         setPidValues(1, 0, 0);
-
-        for (auto& ctrl : _controllers) {
-            ctrl.setWindup(5);
-        }
     }
 
     void setPidValues(float p, float i, float d) {
@@ -70,7 +67,7 @@ public:
         for (int i = 0; i < 4; i++) {
             int16_t dc = targetWheelVels[i] * RobotModel2015.DutyCycleMultiplier;
             //int16_t dc = _controllers[i].run(wheelVelErr[i]);
-            dc += _controllers[i].run(wheelVelErr[i]);
+            dc += _controllers[i].run(wheelVelErr[i], dt);
 
             if (std::abs(dc) > FPGA::MAX_DUTY_CYCLE) {
                 // Limit to max duty cycle
