@@ -72,6 +72,15 @@ public:
             //int16_t dc = _controllers[i].run(wheelVelErr[i]);
             dc += _controllers[i].run(wheelVelErr[i]);
 
+            if (std::abs(dc) > FPGA::MAX_DUTY_CYCLE) {
+                // Limit to max duty cycle
+                dc = copysign(FPGA::MAX_DUTY_CYCLE, dc);
+                // Conditional integration indicating open loop control
+                _controllers[i].set_saturated(true);
+            } else {
+                _controllers[i].set_saturated(false);
+            }
+
             dutyCycles[i] = dc;
         }
 
