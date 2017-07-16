@@ -137,7 +137,7 @@ public:
 
         Eigen::Vector4d wheelVelErr = targetWheelVels - wheelVels;
 
-        std::printf("%f\r\n", wheelVelErr[0]);
+        //std::printf("%f\r\n", wheelVelErr[0]);
 
 
         std::array<int16_t, 4> dutyCycles;
