@@ -94,7 +94,8 @@ void Task_Controller(const void* args) {
 
     std::array<int16_t, 5> duty_cycles{};
 
-    pidController.setPidValues(0.2, 0.00, 0.0005, 0.96);
+    //pidController.setPidValues(0.2, 0.00, 0.0005);
+    pidController.setPidValues(0.6, 0.0, 0.0);
 
     // initialize timeout timer
     commandTimeoutTimer = make_unique<RtosTimerHelper>(

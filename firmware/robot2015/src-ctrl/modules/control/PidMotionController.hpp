@@ -21,11 +21,11 @@ public:
     //std::tuple<float, float> points[num_samples];
     //float points[num_samples];
     //std::vector< std::tuple<float, float> > points;
-    float points[num_samples];
+    //float points[num_samples];
     float duties[4] = {0, 0, 0, 0};
 
     PidMotionController() {
-        setPidValues(1, 0, 0, 0);
+        setPidValues(1, 0, 0);
 
         //if (logging) {
         //    points.reserve(num_samples);
@@ -33,20 +33,23 @@ public:
     }
 
     void log(float dt, const Eigen::Vector4f& wheelVelErr) {
+        /*
         if (!logging) return;
         //printf("Hit log\r\n");
 
         int effective_index = cur_sample / dt_per_sample;
         if (effective_index < num_samples) {
             //points[effective_index] = std::make_tuple(dt, wheelVelErr[0]); //std::make_tuple(dt, wheelVelErr);
-            points[effective_index] = wheelVelErr[1];
+            //points[effective_index] = wheelVelErr[1];
             cur_sample++;
         } else {
             save_log();
         }
+        */
     }
 
     void save_log() {
+        /*
         printf("Saving motor error log to disk.\r\n");
         //FILE *fp = fopen("/local/VEL", "w");
         //fprintf(fp, "time,m1_err,m2_err,m3_err,m4_errble\n");
@@ -67,15 +70,15 @@ public:
         //fclose(fp);
 
         logging = false;
+        */
     }
 
 
-    void setPidValues(float p, float i, float d, float derivAlpha) {
+    void setPidValues(float p, float i, float d) {
         for (Pid& ctl : _controllers) {
             ctl.kp = p;
             ctl.ki = i;
             ctl.kd = d;
-            ctl.derivAlpha = derivAlpha;
         }
     }
 
@@ -143,17 +146,14 @@ public:
             //float dc = targetWheelVels[i] * RobotModel2015.DutyCycleMultiplier;
             //int16_t dc = _controllers[i].run(wheelVelErr[i]);
             dc = duties[i];
-            dc += _controllers[i].run(wheelVelErr[i], dt);
+            dc += _controllers[i].run(wheelVelErr[i]);
 
             if (std::abs(dc) > FPGA::MAX_DUTY_CYCLE) {
                 // Limit to max duty cycle
                 dc = copysign(FPGA::MAX_DUTY_CYCLE, dc);
                 // Conditional integration indicating open loop control
-                _controllers[i].set_saturated(true);
-            } else {
-                _controllers[i].set_saturated(false);
+                //_controllers[i].set_saturated(true);
             }
-
             duties[i] = dc;
             dutyCycles[i] = (int16_t) dc;
         }
