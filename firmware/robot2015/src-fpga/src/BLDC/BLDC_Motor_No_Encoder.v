@@ -16,7 +16,7 @@
 
 
 // BLDC_Motor module - no encoder
-module BLDC_Motor_No_Encoder ( clk, en, reset_hall_count, duty_cycle, hall, phaseH, phaseL, hall_count, has_error );
+module BLDC_Motor_No_Encoder ( clk, en, reset_hall_count, duty_cycle, hall, phaseH, phaseL, hall_count, connected );
 
 // Module parameters - passed parameters will overwrite the values here
 parameter MAX_DUTY_CYCLE =          ( 'h1FF             );
@@ -33,10 +33,10 @@ input [DUTY_CYCLE_WIDTH-1:0] duty_cycle;
 input [2:0] hall;
 output [2:0] phaseH, phaseL;
 output [HALL_COUNT_WIDTH-1:0] hall_count;
-output has_error;
+output connected;
 // ===============================================
 
-wire is_hall_connected, has_hall_fault;
+wire hall_connected, hall_fault;
 
 // Show the expected startup length during synthesis. Assumes an 18.432MHz input clock.
 initial begin
@@ -65,14 +65,23 @@ BLDC_Driver #(                  // Instantiation of the motor driving module
     .duty_cycle                 ( { duty_cycle[DUTY_CYCLE_WIDTH-2:0], 1'b0 } ) ,
     .phaseH                     ( phaseH                    ) ,
     .phaseL                     ( phaseL                    ) ,
-    .connected                  ( is_hall_connected         ) ,
-    .fault                      ( has_hall_fault            )
+    .connected                  ( hall_connected            ) ,
+    .fault                      ( hall_fault                )
 );
 
-wire has_fault = has_hall_fault;
+assign connected = hall_connected & ~(hall_fault);
 
-assign has_error = ~is_hall_connected | has_fault;
+wire pid_clk;
+
+// PI controller's clock
+ClkDivide #(
+  .WIDTH    ( 16                        )
+  ) wdt_clk_gen (
+  .CLK_IN   ( clk                       ) ,
+  .EN       ( en                        ) ,
+  .CLK_OUT  ( pid_clk                   )
+);
 
 endmodule
 
-`endif
+`endif // _BLDC_MOTOR_
