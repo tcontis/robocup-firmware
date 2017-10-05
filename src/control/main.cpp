@@ -175,6 +175,15 @@ int main() {
     uint8_t red = atob(git_version_short_hash[0], git_version_short_hash[1]);
     uint8_t green = atob(git_version_short_hash[2], git_version_short_hash[3]);
     uint8_t blue = atob(git_version_short_hash[4], git_version_short_hash[5]);
+
+    // Make combination of two colors to avoid mostly white combinations
+    if (red < green && red < blue) {
+        red = 0;
+    } else if (green < blue) {
+        green = 0;
+    } else {
+        blue = 0;
+    }
     rgbLED.setPixel(1, red, green, blue);
     rgbLED.write();
 
