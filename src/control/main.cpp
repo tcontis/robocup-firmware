@@ -189,7 +189,7 @@ int main() {
 
     // Set neopixel 1 to purple if git version is dirty
     if (git_version_dirty) {
-        rgbLED.setPixel(1, NeoColorPurple);
+        rgbLED.setPixel(1, NeoColorBlue);
         rgbLED.write();
     }
 
