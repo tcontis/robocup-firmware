@@ -60,9 +60,7 @@ bool test_FPGA(auto& sharedSPI) {
 
 bool test_attiny(auto& sharedSPI) {
     //  initialize kicker board and flash it with new firmware if necessary
-    KickerBoard kickerBoard(sharedSPI, RJ_KICKER_nCS, RJ_KICKER_nRESET,
-                            RJ_BALL_LED, "/local/rj-kickr.nib");
-    bool kickerSuccess = !kickerBoard.flash(true, true);
+    bool kickerSuccess = KickerBoard::Instance->flash(false, false);
     return kickerSuccess;
 }
 
@@ -89,6 +87,10 @@ int main() {
 
     FPGA::Instance = new FPGA(sharedSPI, RJ_FPGA_nCS, RJ_FPGA_INIT_B,
                               RJ_FPGA_PROG_B, RJ_FPGA_DONE);
+
+    KickerBoard::Instance =
+        new KickerBoard(sharedSPI, RJ_KICKER_nCS, RJ_KICKER_nReset, RJ_BALL_LED,
+                        "/local/rj-kickr.nib");
 
     MPU6050 mpu(RJ_I2C_SDA, RJ_I2C_SCL, 400000);
 
