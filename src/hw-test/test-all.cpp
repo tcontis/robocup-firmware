@@ -51,14 +51,6 @@ char test_dipSwitch(MCP23017& io_expander) {
     return value;
 }
 
-bool test_mpu6050(I2CMasterRtos& i2c, uint8_t regAddr) {
-    // To test the MPU, the WHO_AM_I register should contain mpu address
-    char buffer;
-    i2c.write((MPU6050_ADDRESS << 1), (char*)&regAddr, 1, true);
-    i2c.read((MPU6050_ADDRESS << 1), &buffer, 1);
-    return (buffer == (MPU6050_ADDRESS & 0xFE));  // Last bit defined to be 0
-}
-
 bool test_FPGA(auto& sharedSPI) {
     const bool fpgaInitialized =
         FPGA::Instance->configure("/local/rj-fpga.nib");
@@ -103,42 +95,52 @@ int main() {
     MCP23017 io_expander(RJ_I2C_SDA, RJ_I2C_SCL, RJ_IO_EXPANDER_I2C_ADDRESS);
     io_expander.config(0x00FF, 0x00FF, 0x00FF);
 
-    bool testStatus = false;
-    bool kickerConnected = false;
+    bool MPU_working = false;
+    bool io_expander_working = false;
+    bool decawave_working = false;
+    bool fpga_working = false;
+    bool attiny_working = false;
+    bool kicker_connected = true;
 
-    pc.printf("========= STARTING TEST =========\r\n\r\n");
+    pc.printf("========= STARTING TESTS =========\r\n\r\n");
 
     pc.printf("-- Testing IMU at 400kHz --\r\n\n");
-    // testStatus = test_mpu6050(i2c);
-    testStatus = mpu.testConnection();
-    pc.printf("\t\t\t Test %s\n\n\n\r", (testStatus ? "Succeeded" : "Failed"));
+    MPU_working = mpu.testConnection();
+    pc.printf("   Test %s\n\n\n\r", (MPU_working ? "Succeeded" : "Failed"));
 
     pc.printf("-- Testing IO Expander --\n\n\r");
-    testStatus = test_io_expander(i2c);
-    pc.printf("\t\t\t Test %s\n\n\n\r", (testStatus ? "Succeeded" : "Failed"));
+    io_expander_working = test_io_expander(i2c);
+    pc.printf("   Test %s\n\n\n\r",
+              (io_expander_working ? "Succeeded" : "Failed"));
 
-    if (testStatus) {
-        testStatus = test_rotaryKnob(io_expander);
+    if (io_expander_working) {
+        test_rotaryKnob(io_expander);
 
-        testStatus = test_dipSwitch(io_expander);
+        test_dipSwitch(io_expander);
     } else {
         pc.printf(
             "Since IO Expander isn't working, skipping rotary knob and dip "
-            "switch checks");
+            "switch checks\n\n\r");
     }
 
     pc.printf("-- Testing decawave -- \n\r");
-    testStatus = test_decawave(sharedSPI);
-    pc.printf("\t\t\t Test %s\n\n\n\r", (testStatus ? "Succeeded" : "Failed"));
+    decawave_working = test_decawave(sharedSPI);
+    pc.printf("   Test %s\n\n\n\r",
+              (decawave_working ? "Succeeded" : "Failed"));
 
     pc.printf("-- Testing FPGA -- \n\r");
-    testStatus = test_FPGA(sharedSPI);
-    pc.printf("\t\t\t Test %s\n\n\n\r", (testStatus ? "Succeeded" : "Failed"));
+    fpga_working = test_FPGA(sharedSPI);
+    pc.printf("   Test %s\n\n\n\r", (fpga_working ? "Succeeded" : "Failed"));
 
-    if (kickerConnected) {
+    if (kicker_connected) {
         pc.printf("-- Testing kicker ATTiny -- \n\r");
-        testStatus = test_attiny(sharedSPI);
-        pc.printf("\t\t\t Test %s\n\n\n\r",
-                  (testStatus ? "Succeeded" : "Failed"));
+        attiny_working = test_attiny(sharedSPI);
+        pc.printf("   Test %s\n\n\n\r",
+                  (attiny_working ? "Succeeded" : "Failed"));
+    }
+
+    pc.printf("========= END OF TESTS =========\r\n\r\n");
+
+    while (true) {
     }
 }
