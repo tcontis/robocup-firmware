@@ -55,7 +55,7 @@ void CommModule::txThread() {
 #endif
 
             // grab the port number
-            const auto portNum = p->header.port;
+            const auto portNum = p->header.type;
 
             // grab an iterator to the port, lookup only once
             const auto portIter = m_ports.find(portNum);
@@ -129,7 +129,7 @@ void CommModule::rxThread() {
 #endif
 
             // grab the port number
-            const auto portNum = p->header.port;
+            const auto portNum = p->header.type;
 
             // grab an iterator to the port, lookup only once
             const auto portIter = m_ports.find(portNum);
@@ -160,7 +160,6 @@ void CommModule::rxThread() {
             osThreadSetPriority(m_rxThreadId, threadPriority);
 #endif
         } else {
-            auto p = reinterpret_cast<rtp::Packet*>(event.value.p);
             std::printf(
                 "osMessageGet for RX returned unexpected status: %d\r\n",
                 event.status);
@@ -175,7 +174,7 @@ void CommModule::rxThread() {
 }
 
 void CommModule::send(rtp::Packet packet) {
-    const auto portNum = packet.header.port;
+    const auto portNum = packet.header.type;
     const auto portExists = m_ports.find(portNum) != m_ports.end();
     const auto hasCallback = m_ports[portNum].hasTxCallback();
 
@@ -194,12 +193,12 @@ void CommModule::send(rtp::Packet packet) {
     } else {
         LOG(WARN,
             "Failed to send %u byte packet: No TX socket on port %u exists",
-            packet.payload.size(), packet.header.port);
+            packet.payload.size(), packet.header.type);
     }
 }
 
 void CommModule::receive(rtp::Packet packet) {
-    const auto portNum = packet.header.port;
+    const auto portNum = packet.header.type;
     const auto portExists = m_ports.find(portNum) != m_ports.end();
     const auto hasCallback = m_ports[portNum].hasRxCallback();
 
@@ -226,12 +225,12 @@ void CommModule::receive(rtp::Packet packet) {
     }
 }
 
-void CommModule::setRxHandler(RxCallbackT callback, uint8_t portNbr) {
+void CommModule::setRxHandler(RxCallbackT callback, rtp::MessageType portNbr) {
     m_ports[portNbr].setRxCallback(std::bind(callback, std::placeholders::_1));
     ready();
 }
 
-void CommModule::setTxHandler(TxCallbackT callback, uint8_t portNbr) {
+void CommModule::setTxHandler(TxCallbackT callback, rtp::MessageType portNbr) {
     m_ports[portNbr].setTxCallback(std::bind(callback, std::placeholders::_1));
     ready();
 }
@@ -241,7 +240,7 @@ void CommModule::ready() {
     m_isReady = true;
 }
 
-void CommModule::close(unsigned int portNbr) noexcept {
+void CommModule::close(rtp::MessageType portNbr) noexcept {
     if (m_ports.count(portNbr)) m_ports.erase(portNbr);
 }
 
@@ -267,7 +266,7 @@ unsigned int CommModule::numTxPackets() const {
     return count;
 }
 
-void CommModule::resetCount(unsigned int portNbr) {
+void CommModule::resetCount(rtp::MessageType portNbr) {
     m_ports[portNbr].resetCounts();
 }
 

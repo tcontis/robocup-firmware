@@ -39,21 +39,21 @@ public:
     CommModule();
 
     /// Assign an RX callback function to a port
-    void setRxHandler(RxCallbackT callback, uint8_t portNbr);
+    void setRxHandler(RxCallbackT callback, rtp::MessageType portNbr);
 
     /// Assign a TX callback function to a port
-    void setTxHandler(TxCallbackT callback, uint8_t portNbr);
+    void setTxHandler(TxCallbackT callback, rtp::MessageType portNbr);
 
     /// Assign an RX callback method to a port
     template <typename B>
-    void setRxHandler(B* obj, void (B::*mptr)(rtp::Packet), uint8_t portNbr) {
+    void setRxHandler(B* obj, void (B::*mptr)(rtp::Packet), rtp::MessageType portNbr) {
         setRxHandler(std::bind(mptr, obj, std::placeholders::_1), portNbr);
     }
 
     /// Assign an TX callback method to a port
     template <typename B>
     void setTxHandler(B* obj, int32_t (B::*mptr)(const rtp::Packet*),
-                      uint8_t portNbr) {
+                      rtp::MessageType portNbr) {
         setTxHandler(std::bind(mptr, obj, std::placeholders::_1), portNbr);
     }
 
@@ -64,7 +64,7 @@ public:
     void receive(rtp::Packet pkt);
 
     /// Close a port that was previouly assigned callback functions/methods
-    void close(unsigned int portNbr) noexcept;
+    void close(rtp::MessageType portNbr) noexcept;
 
     /// Check if everything is ready for sending/receiving packets
     inline bool isReady() const noexcept { return m_isReady && m_isRunning; }
@@ -80,7 +80,7 @@ public:
     unsigned int numTxPackets() const;
 
     /// Resets the counts for send/received packets
-    void resetCount(unsigned int portNbr);
+    void resetCount(rtp::MessageType portNbr);
 
     /// Print debugging information
     void printInfo() const;
@@ -102,7 +102,7 @@ private:
     static constexpr osPriority RX_PRIORITY = osPriorityAboveNormal;
     static constexpr osPriority TX_PRIORITY = osPriorityAboveNormal;
 
-    std::map<uint8_t, PortT> m_ports;
+    std::map<rtp::MessageType, PortT> m_ports;
 
     Thread m_rxThread;
     Thread m_txThread;

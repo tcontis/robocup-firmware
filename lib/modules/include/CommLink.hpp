@@ -10,7 +10,7 @@
 #include <memory>
 
 /// CommLink error levels
-enum { COMM_SUCCESS, COMM_FAILURE, COMM_DEV_BUF_ERR, COMM_NO_DATA };
+enum CommStatus : int32_t { COMM_SUCCESS, COMM_FAILURE, COMM_DEV_BUF_ERR, COMM_NO_DATA };
 
 /**
  * CommLink Class used as the hal (hardware abstraction layer) module for
@@ -68,7 +68,7 @@ protected:
      *
      * @return A vector of received bytes returned with std::move
      */
-    virtual BufferT getData() = 0;
+    virtual rtp::Packet getData() = 0;
 
     /// Interrupt Service Routine
     void ISR() { m_rxThread.signal_set(SIGNAL_RX); }

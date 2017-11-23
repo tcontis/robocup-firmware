@@ -81,65 +81,91 @@ int32_t Decawave::sendPacket(const rtp::Packet* pkt) {
     // Return failutre if not initialized
     if (!m_isInit) return COMM_FAILURE;
 
+    const auto bufferSize = sizeof(MACHeader) + pkt->size() + 2;
+    if (bufferSize > MAX_PACKET_LENGTH || pkt->empty) {
+        return COMM_DEV_BUF_ERR;
+    }
+
     dwt_rxreset();
     dwt_forcetrxoff();
 
-    BufferT txBuffer;
+    m_txBuffer.clear();
+    m_txBuffer.reserve(bufferSize);
 
-    const auto bufferSize = 9 + pkt->size() + 2;
-    txBuffer.reserve(bufferSize);
+    MACHeader header;
+    header.control.frameType = DATA;
+    header.control.ackRequest = pkt->macInfo.ackRequest;
+    header.seqNum = pkt->macInfo.seqNum;
+    header.destPAN = pkt->macInfo.destPAN;
+    header.destAddr = pkt->macInfo.destAddr;
 
+    if (pkt->macInfo.srcAddr == rtp::BROADCAST_ADDR) {
+        header.srcAddr = static_cast<uint16_t>(m_address);
+    } else {
+        header.srcAddr = pkt->macInfo.srcAddr;
+    }
+
+    const auto headerFirstPtr = reinterpret_cast<const uint8_t*>(&header);
+    const auto headerLastPtr = headerFirstPtr + sizeof(header);
     // MAC layer header for Decawave
-    txBuffer.insert(txBuffer.end(),
-                    {0x41, 0x88, 0x00, 0xCA, 0xDE, pkt->header.address, 0x00,
-                     static_cast<uint8_t>(m_address), 0x00});
+    m_txBuffer.insert(m_txBuffer.end(), headerFirstPtr, headerLastPtr);
 
-    ASSERT(txBuffer.size() == 9);
-
-    const auto headerFirstPtr = reinterpret_cast<const uint8_t*>(&pkt->header);
-    const auto headerLastPtr = headerFirstPtr + rtp::HeaderSize;
-
+    const auto rtpHeaderFirstPtr = reinterpret_cast<const uint8_t*>(&pkt->header);
+    const auto rtpHeaderLastPtr = rtpHeaderFirstPtr + sizeof(rtp::Header);
     // insert the rtp header
-    txBuffer.insert(txBuffer.end(), headerFirstPtr, headerLastPtr);
+    m_txBuffer.insert(m_txBuffer.end(), rtpHeaderFirstPtr, rtpHeaderLastPtr);
+
     // insert the rtp payload
-    txBuffer.insert(txBuffer.end(), pkt->payload.begin(), pkt->payload.end());
+    m_txBuffer.insert(m_txBuffer.end(), pkt->payload.begin(), pkt->payload.end());
     // insert padding for CRC
-    txBuffer.insert(txBuffer.end(), {0x00, 0x00});
+    m_txBuffer.insert(m_txBuffer.end(), {0x00, 0x00});
 
     // send to the Decawave's API
-    dwt_writetxdata(txBuffer.size(), txBuffer.data(), 0);
-    dwt_writetxfctrl(txBuffer.size(), 0, 0);
+    dwt_writetxdata(m_txBuffer.size(), m_txBuffer.data(), 0);
+    dwt_writetxfctrl(m_txBuffer.size(), 0, 0);
 
     const auto sentStatus =
         dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
     const auto hadError = sentStatus != DWT_SUCCESS;
 
-    return hadError ? COMM_DEV_BUF_ERR : COMM_SUCCESS;
+    return hadError ? COMM_FAILURE : COMM_SUCCESS;
 }
 
-CommLink::BufferT Decawave::getData() {
-    BufferT buf{};
+rtp::Packet Decawave::getData() {
+    // TODO: more optimized return with std::move?
+    rtp::Packet pkt;
 
     // Return empty data if not initialized
-    if (!m_isInit) return std::move(buf);
-
-    // set the m_rxBuffer's pointer to our vector before calling the isr
-    // function
-    m_rxBufferPtr = &buf;
+    if (!m_isInit) return pkt;
 
     // manually invoke the isr routine & set back into RX mode
+    // TODO: probably a better way to do this?
     dwt_isr();
     // our buffer is now filled with the received bytes if everything went ok
     dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
     // return empty buffer if the isr routine failed to fill it with anything
-    if (buf.empty()) return std::move(buf);
+    if (m_rxBuffer.empty()) return pkt;
 
-    // remove the last 2 elements
-    buf.erase(buf.end() - 3, buf.end() - 1);
+    auto bufOffset = 0;
+
+    MACHeader macHeader = *(reinterpret_cast<const MACHeader*>(m_rxBuffer.data() + bufOffset));
+    bufOffset += sizeof(MACHeader);
+
+    pkt.header = *(reinterpret_cast<const rtp::Header*>(m_rxBuffer.data() + bufOffset));
+    bufOffset += sizeof(rtp::Header);
+
+    pkt.payload.assign(m_rxBuffer.begin() + bufOffset, m_rxBuffer.end());
+
+    pkt.macInfo.seqNum = macHeader.seqNum;
+    pkt.macInfo.destPAN = macHeader.destPAN;
+    pkt.macInfo.destAddr = macHeader.destAddr;
+    pkt.macInfo.srcAddr = macHeader.srcAddr;
+    pkt.macInfo.ackRequest = macHeader.control.ackRequest;
+    pkt.empty = false;
 
     // move the buffer to the caller
-    return std::move(buf);
+    return pkt;
 }
 
 int32_t Decawave::selfTest() {
@@ -179,7 +205,7 @@ void Decawave::reset() {
         dwt_configure(&config);
         dwt_configuretxrf(&txconfig);
 
-        setSPIFrequency(8'000'000);  // won't work after 8MHz
+        setSPIFrequency(8'000'000);  // won't work after 8MHz (or will it?)
 
         dwt_setrxaftertxdelay(TX_TO_RX_DELAY_UUS);
         dwt_setcallbacks(
@@ -192,6 +218,7 @@ void Decawave::reset() {
         setLED(true);
         dwt_forcetrxoff();  // TODO: Better way than force off then reset?
         dwt_rxreset();
+         // TODO: should this be commented?
         // dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
         LOG(INFO, "Decawave ready!");
@@ -199,11 +226,13 @@ void Decawave::reset() {
     }
 }
 
-void Decawave::setAddress(int addr) {
+void Decawave::setAddress(uint16_t pan, uint16_t addr) {
+    m_address = addr;
+    m_pan = pan;
     CommLink::setAddress(addr);
 
-    dwt_setpanid(0xDECA);
-    dwt_setaddress16(static_cast<uint16_t>(addr));
+    dwt_setpanid(pan);
+    dwt_setaddress16(addr);
     dwt_enableframefilter(DWT_FF_DATA_EN);
 }
 
@@ -228,11 +257,10 @@ int Decawave::readfromspi(uint16 headerLength, const uint8* headerBuffer,
 
 // Callback functions for decawave interrupt
 void Decawave::getDataSuccess(const dwt_cb_data_t* cb_data) {
-    const auto offset = 9;
-    const auto dataLength = cb_data->datalength - offset;
+    const auto dataLength = cb_data->datalength;
     // Read recived data to m_rxBufferPtr array
-    m_rxBufferPtr->resize(dataLength);
-    dwt_readrxdata(m_rxBufferPtr->data(), dataLength, offset);
+    m_rxBuffer.resize(dataLength);
+    dwt_readrxdata(m_rxBuffer.data(), dataLength, 0);
 }
 
 void Decawave::getDataFail(const dwt_cb_data_t* cb_data) {}

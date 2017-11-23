@@ -45,11 +45,11 @@ void CommLink::rxThread() {
         LOG(DEBUG, "RX interrupt triggered");
 
         // Get the received data from the external chip
-        auto response = getData();
+        rtp::Packet response = getData();
 
-        if (!response.empty()) {
+        if (!response.empty) {
             // Write the data to the CommModule object's rxQueue
-            CommModule::Instance->receive(rtp::Packet(response));
+            CommModule::Instance->receive(std::move(response));
         }
     }
 

@@ -62,7 +62,7 @@ void kick(uint8_t strength) {
     // minimum of 6 ms, we were breaking kickers with low duty cycles
     // maximum of 6 + 7 == 13 ms
     // millis_left_ = (int) ((strength / 255.0) * 6.0) + 7;
-    millis_left_ = 13;  // always full kick speed
+    millis_left_ = 5;  // always full kick speed
     post_kick_cooldown_ = 5;
     kick_wait = 2000;
 
@@ -102,9 +102,9 @@ void main() {
         }
 
         // if we dropped below acceptable voltage, then this will catch it
-        if (last_voltage_ > 239 || !charge_allowed_ || !charge_commanded_) {
+        if (last_voltage_ > 155 || !charge_allowed_ || !charge_commanded_) {
             PORTB &= ~(_BV(CHARGE_PIN));
-        } else if (last_voltage_ < 232 && charge_allowed_ &&
+        } else if (last_voltage_ < 150 && charge_allowed_ &&
                    charge_commanded_) {
             PORTB |= _BV(CHARGE_PIN);
         }
