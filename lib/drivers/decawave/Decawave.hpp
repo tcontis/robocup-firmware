@@ -60,11 +60,7 @@ public:
 
     virtual bool isConnected() const override { return m_isInit; }
 
-    virtual void setAddress(uint16_t pan, uint16_t addr);
-    virtual void setAddress(int addr) override {
-        setAddress(0xFFFF, static_cast<uint16_t>(addr));
-    }
-
+    virtual void setAddress(int addr, int pan = rtp::BROADCAST_PAN) override;
 
     virtual int writetospi(uint16 headerLength, const uint8* headerBuffer,
                            uint32 bodylength, const uint8* bodyBuffer) override;
@@ -80,7 +76,6 @@ private:
     BufferT m_rxBuffer;
     BufferT m_txBuffer;
     uint32_t m_chipVersion;
-    uint16_t m_pan;
     bool m_isInit = false;
     DigitalOut nReset;
 

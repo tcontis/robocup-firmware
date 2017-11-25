@@ -2,10 +2,7 @@
 #include "Rtos.hpp"
 #include "Decawave.hpp"
 #include "Logger.hpp"
-#include "Logger.hpp"
 #include "SharedSPI.hpp"
-#include "Watchdog.hpp"
-#include "firmware-common/base/usb-interface.hpp"
 #include "pins-control.hpp"
 #include "robot-config.hpp"
 

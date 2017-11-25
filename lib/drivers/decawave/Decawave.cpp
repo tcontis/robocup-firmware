@@ -74,6 +74,11 @@ Decawave::Decawave(SpiPtrT sharedSPI, PinName nCs, PinName intPin,
                    PinName _nReset)
     : CommLink(sharedSPI, nCs, intPin), dw1000_api(), nReset(_nReset) {
     reset();
+    if (m_isInit) {
+        LOG(INFO, "Decawave ready!");
+    } else {
+        LOG(SEVERE, "Decawave not initialized");
+    }
 }
 
 // Virtual functions from CommLink
@@ -193,7 +198,6 @@ void Decawave::reset() {
     setSPIFrequency(2'000'000);
 
     if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
-        LOG(SEVERE, "Decawave not initialized");
         return;
     }
 
@@ -219,20 +223,18 @@ void Decawave::reset() {
         dwt_forcetrxoff();  // TODO: Better way than force off then reset?
         dwt_rxreset();
          // TODO: should this be commented?
-        // dwt_rxenable(DWT_START_RX_IMMEDIATE);
+        dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
-        LOG(INFO, "Decawave ready!");
         CommLink::ready();
     }
 }
 
-void Decawave::setAddress(uint16_t pan, uint16_t addr) {
+void Decawave::setAddress(int addr, int pan) {
     m_address = addr;
     m_pan = pan;
-    CommLink::setAddress(addr);
-
-    dwt_setpanid(pan);
-    dwt_setaddress16(addr);
+    CommLink::setAddress(addr, pan);
+    dwt_setpanid(static_cast<uint16_t>(m_pan));
+    dwt_setaddress16(static_cast<uint16_t>(m_address));
     dwt_enableframefilter(DWT_FF_DATA_EN);
 }
 

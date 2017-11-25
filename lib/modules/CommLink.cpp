@@ -9,7 +9,7 @@ constexpr auto STACK_SIZE = DEFAULT_STACK_SIZE / 2;
 constexpr auto RX_PRIORITY = osPriorityHigh;
 }
 
-std::unique_ptr<CommLink> globalRadio = nullptr;
+std::shared_ptr<CommLink> globalRadio = nullptr;
 
 CommLink::CommLink(SpiPtrT sharedSPI, PinName nCs, PinName intPin)
     : SharedSPIDevice(sharedSPI, nCs, true),

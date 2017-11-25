@@ -52,13 +52,17 @@ public:
     virtual int32_t sendPacket(const rtp::Packet* pkt) = 0;
 
     /// Set the MAC layer filtering address for the link
-    virtual void setAddress(int addr) { m_address = addr; }
+    virtual void setAddress(int addr, int pan = rtp::BROADCAST_PAN) {
+        m_address = addr;
+        m_pan = pan;
+    }
 
 protected:
     static constexpr size_t SIGNAL_START = (1 << 1);
-    static constexpr size_t SIGNAL_RX = (1 << 1);
+    static constexpr size_t SIGNAL_RX = (1 << 2);
 
     int m_address = rtp::INVALID_ROBOT_UID;
+    int m_pan = rtp::BROADCAST_PAN;
     InterruptIn m_intIn;
 
     /**
@@ -94,4 +98,4 @@ private:
     }
 };
 
-extern std::unique_ptr<CommLink> globalRadio;
+extern std::shared_ptr<CommLink> globalRadio;

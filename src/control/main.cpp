@@ -4,7 +4,7 @@
 #include "Assert.hpp"
 #include "BallSensor.hpp"
 #include "Commands.hpp"
-#include "ConfigStore.hpp"
+// #include "ConfigStore.hpp"
 #include "Decawave.hpp"
 #include "FPGA.hpp"
 #include "HelperFuncs.hpp"
@@ -26,7 +26,7 @@
 #include <array>
 #include <ctime>
 #include <string>
-#include <configuration/ConfigStore.hpp>
+// #include <configuration/ConfigStore.hpp>
 #include <stall/stall.hpp>
 
 // set to 1 to enable CommModule rx/tx stress test
@@ -73,8 +73,8 @@ void Task_Simulate_RX_Packet(const void* args) {
 #endif
 
 void Task_Controller(const void* args);
-void Task_Controller_UpdateTarget(Eigen::Vector3f targetVel);
-void Task_Controller_UpdateDribbler(uint8_t dribbler);
+// void Task_Controller_UpdateTarget(Eigen::Vector3f targetVel);
+// void Task_Controller_UpdateDribbler(uint8_t dribbler);
 void InitializeCommModule(SharedSPIDevice<>::SpiPtrT sharedSPI);
 
 extern std::array<WheelStallDetection, 4> wheelStallDetection;
@@ -237,9 +237,9 @@ int main() {
                          IOExpanderErrorLEDMask);
 
     // DIP Switch 1 controls the radio channel.
-    uint8_t currentRadioChannel = 0;
-    IOExpanderDigitalInOut radioChannelSwitch(&ioExpander, RJ_DIP_SWITCH_1,
-                                              MCP23017::DIR_INPUT);
+    // uint8_t currentRadioChannel = 0;
+    // IOExpanderDigitalInOut radioChannelSwitch(&ioExpander, RJ_DIP_SWITCH_1,
+    //                                           MCP23017::DIR_INPUT);
 
     // rotary selector for shell id
     RotarySelector<IOExpanderDigitalInOut> rotarySelector(
@@ -282,127 +282,27 @@ int main() {
     AnalogIn batt(RJ_BATT_SENSE);
     uint8_t battVoltage = 0;
 
-    // Radio timeout timer
-    const auto RadioTimeout = 100;
-    RtosTimerHelper radioTimeoutTimer([&]() {
-        // Reset radio if no RX packet in specified time
-        // globalRadio->reset();
-        radioTimeoutTimer.start(RadioTimeout);
-
-        // KickerBoard::Instance->setChargeAllowed(false);
-        globalRadio->reset();
-        globalRadio->setAddress(rtp::ROBOT_ADDRESS);
-    }, osTimerOnce);
-    radioTimeoutTimer.start(RadioTimeout);
-
     // Setup radio protocol handling
-    RadioProtocol radioProtocol(CommModule::Instance);
+    RadioProtocol radioProtocol(CommModule::Instance, globalRadio);
     radioProtocol.setUID(robotShellID);
     radioProtocol.start();
 
-    radioProtocol.debugCallback = [&](const rtp::DebugMessage& msg) {
-        //            DebugCommunication::debugResponses = msg.keys;
-    };
+    // radioProtocol.debugCallback = [&](const rtp::DebugMessage& msg) {
+    //     //            DebugCommunication::debugResponses = msg.keys;
+    // };
 
-    radioProtocol.confCallback = [&](const rtp::ConfMessage& msg) {
-        for (int i = 0; i < rtp::ConfMessage::length; i++) {
-            auto configCommunication = msg.keys[i];
-            if (configCommunication != DebugCommunication::ConfigCommunication::
-                                           CONFIG_COMMUNICATION_NONE) {
-                const auto index = static_cast<int>(configCommunication);
-                DebugCommunication::configStore[index] = msg.values[i];
-                DebugCommunication::configStoreIsValid[index] = true;
-            }
-        }
-    };
+    // radioProtocol.confCallback = [&](const rtp::ConfMessage& msg) {
+    //     for (int i = 0; i < rtp::ConfMessage::length; i++) {
+    //         auto configCommunication = msg.keys[i];
+    //         if (configCommunication != DebugCommunication::ConfigCommunication::
+    //                                        CONFIG_COMMUNICATION_NONE) {
+    //             const auto index = static_cast<int>(configCommunication);
+    //             DebugCommunication::configStore[index] = msg.values[i];
+    //             DebugCommunication::configStoreIsValid[index] = true;
+    //         }
+    //     }
+    // };
 
-    radioProtocol.rxCallback =
-        [&](const rtp::ControlMessage* msg, const bool addressed) {
-            // reset timeout
-            radioTimeoutTimer.start(RadioTimeout);
-
-            if (addressed) {
-                // update target velocity from packet
-                Task_Controller_UpdateTarget({
-                    static_cast<float>(msg->bodyX) /
-                        rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
-                    static_cast<float>(msg->bodyY) /
-                        rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
-                    static_cast<float>(msg->bodyW) /
-                        rtp::ControlMessage::VELOCITY_SCALE_FACTOR,
-                });
-
-                // dribbler
-                Task_Controller_UpdateDribbler(msg->dribbler);
-
-                if (msg->triggerMode == 0) {
-                    KickerBoard::Instance->cancelBreakbeam();
-                }
-
-                // kick!
-                if (msg->shootMode == 0) {
-                    uint8_t kickStrength = msg->kickStrength;
-                    if (msg->triggerMode == 1) {
-                        // kick immediate
-                        KickerBoard::Instance->kick(kickStrength);
-                    } else if (msg->triggerMode == 2) {
-                        // kick on break beam
-                        KickerBoard::Instance->kickOnBreakbeam(kickStrength);
-                    } else {
-                        KickerBoard::Instance->cancelBreakbeam();
-                    }
-                }
-            }
-            KickerBoard::Instance->setChargeAllowed(true);
-
-            rtp::RobotStatusMessage reply;
-            reply.uid = robotShellID;
-            reply.battVoltage = battVoltage;
-            reply.ballSenseStatus = KickerBoard::Instance->isBallSensed();
-
-            // report any motor errors
-            reply.motorErrors = 0;
-            for (auto i = 0; i < 5; i++) {
-                auto err = global_motors[i].status.hasError;
-                if (err) reply.motorErrors |= (1 << i);
-            }
-
-            for (auto i = 0; i < wheelStallDetection.size(); i++) {
-                if (wheelStallDetection[i].stalled) {
-                    reply.motorErrors |= (1 << i);
-                }
-            }
-
-            // fpga status
-            if (!fpgaInitialized) {
-                reply.fpgaStatus = 1;
-            } else if (fpgaError) {
-                reply.fpgaStatus = 1;
-            } else {
-                reply.fpgaStatus = 0;  // good
-            }
-
-            // kicker status
-            reply.kickStatus = KickerBoard::Instance->getVoltage() > 230;
-            reply.kickHealthy = KickerBoard::Instance->isHealthy();
-
-            //            for (int i=0;
-            //            i<rtp::RobotStatusMessage::debug_data_length; i++) {
-            //                auto debugType =
-            //                DebugCommunication::debugResponses[i];
-            //                if (debugType != 0) {
-            //                    reply.debug_data[i] =
-            //                    DebugCommunication::debugStore[debugType];
-            //                } else {
-            //                    reply.debug_data[i] =  -1;
-            //                }
-            //            }
-
-            vector<uint8_t> replyBuf;
-            rtp::serializeToVector(reply, &replyBuf);
-
-            return replyBuf;
-        };
 
     // LOG(INIT, "Started charging kicker board.");
 
@@ -415,14 +315,8 @@ int main() {
     console_task.signal_set(SUB_TASK_CONTINUE);
 #endif
 
-// #pragma for gcc has bugs in it for selectively disabling warnings
-// so we test for NDEBUG instead
-#ifndef NDEBUG
-    auto tState = osThreadSetPriority(mainID, osPriorityAboveNormal);
+    [[gnu::unused]] auto tState = osThreadSetPriority(mainID, osPriorityAboveNormal);
     ASSERT(tState == osOK);
-#else
-    osThreadSetPriority(mainID, osPriorityAboveNormal);
-#endif
 
     auto ll = 0;
     (void)ll;
@@ -491,12 +385,12 @@ int main() {
         radioProtocol.setUID(robotShellID);
 
         // update radio channel
-        auto newRadioChannel = static_cast<uint8_t>(radioChannelSwitch.read());
-        if (newRadioChannel != currentRadioChannel) {
-            // globalRadio->setChannel(newRadioChannel);
-            currentRadioChannel = newRadioChannel;
-            LOG(INFO, "Changed radio channel to %u", newRadioChannel);
-        }
+        // auto newRadioChannel = static_cast<uint8_t>(radioChannelSwitch.read());
+        // if (newRadioChannel != currentRadioChannel) {
+        //     // globalRadio->setChannel(newRadioChannel);
+        //     currentRadioChannel = newRadioChannel;
+        //     LOG(INFO, "Changed radio channel to %u", newRadioChannel);
+        // }
 
         // Set error-indicating leds on the control board
         ioExpander.writeMask(~errorBitmask, IOExpanderErrorLEDMask);

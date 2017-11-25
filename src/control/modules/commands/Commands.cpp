@@ -975,210 +975,210 @@ int cmd_heapfill(cmd_args_t& args) {
 
 #ifndef NDEBUG
 int cmd_radio(cmd_args_t& args) {
-    if (args.empty()) {
-        // Default to showing the list of ports
+    // if (args.empty()) {
+    //     // Default to showing the list of ports
         CommModule::Instance->printInfo();
-        return 0;
-    }
-
-    if (!CommModule::Instance->isReady()) {
-        printf("The radio interface is not ready! Unseen bugs may occur!\r\n");
-    }
-
-    if (args.size() == 1 || args.size() == 2) {
-        rtp::Packet pck("LINK TEST PAYLOAD");
-        auto portNbr = rtp::PortType::LINK;
-
-        if (args.size() > 1)
-            portNbr = static_cast<rtp::PortType>(atoi(args[1].c_str()));
-
-        pck.header.port = portNbr;
-        pck.header.address = rtp::BASE_STATION_ADDRESS;
-
-        if (args[0] == "test-tx") {
-            printf("Placing %u byte packet in TX buffer.\r\n",
-                   pck.payload.size());
-            CommModule::Instance->send(std::move(pck));
-
-        } else if (args[0] == "test-rx") {
-            printf("Placing %u byte packet in RX buffer.\r\n",
-                   pck.payload.size());
-            CommModule::Instance->receive(pck);
-
-        } else if (args[0] == "show") {
-            CommModule::Instance->printInfo();
-
-        } else if (args[0] == "loopback") {
-            pck.header.port = rtp::PortType::LINK;
-
-            unsigned int i = 1;
-            if (args.size() > 1) {
-                i = atoi(args[1].c_str());
-                portNbr = rtp::PortType::LINK;
-            }
-
-            pck.header.port = portNbr;
-            pck.header.address = rtp::LOOPBACK_ADDRESS;
-
-            printf(
-                "Placing %u, %u byte packet(s) in TX buffer with ACK set.\r\n",
-                i, pck.payload.size());
-
-            for (size_t j = 0; j < i; ++j) {
-                rtp::Packet pck2;
-                pck2 = pck;
-                CommModule::Instance->send(std::move(pck2));
-                Thread::wait(50);
-            }
-
-            // } else if (args[0] == "strobe") {
-            // globalRadio->strobe(0x30 + atoi(args[1].c_str()));
-            // } else if (args[0] == "debug") {
-            // bool wasEnabled = globalRadio->isDebugEnabled();
-            // globalRadio->setDebugEnabled(!wasEnabled);
-            // printf("Radio debugging now %s\r\n",
-            //    wasEnabled ? "DISABLED" : "ENABLED");
-        } else {
-            show_invalid_args(args[0]);
-            return 1;
-        }
-    } else if (args.size() == 3) {
-        if (args[0] == "set") {
-            if (isPosInt(args[2].c_str())) {
-                unsigned int portNbr = atoi(args[2].c_str());
-
-                if (args[1] == "close") {
-                    CommModule::Instance->close(portNbr);
-                    printf("Port %u closed.\r\n", portNbr);
-
-                } else if (args[1] == "reset") {
-                    CommModule::Instance->resetCount(portNbr);
-                    printf("Reset packet counts for port %u.\r\n", portNbr);
-
-                } else {
-                    show_invalid_args(args);
-                    return 1;
-                }
-            } else {
-                show_invalid_args(args[2]);
-                return 1;
-            }
-        } else {
-            show_invalid_args(args[2]);
-            return 1;
-        }
-    } else if (args.size() >= 4) {
-        if (args[0] == "stress-test") {
-            unsigned int packet_cnt = atoi(args[1].c_str());
-            unsigned int ms_delay = atoi(args[2].c_str());
-            unsigned int pck_size = atoi(args[3].c_str());
-            rtp::Packet pck(std::string(pck_size - 2, '~') + ".");
-
-            pck.header.port = rtp::PortType::LINK;
-            pck.header.address = rtp::LOOPBACK_ADDRESS;
-
-            printf(
-                "Beginning radio stress test with %u %u byte "
-                "packets. %ums delay between packets.\r\n",
-                packet_cnt, pck.payload.size(), ms_delay);
-
-            int start_tick = clock();
-            for (size_t i = 0; i < packet_cnt; ++i) {
-                Thread::wait(ms_delay);
-                CommModule::Instance->send(std::move(pck));
-            }
-            printf("Stress test finished in %.1fms.\r\n",
-                   (clock() - start_tick) /
-                       static_cast<double>(CLOCKS_PER_SEC) * 1000);
-        }
-    } else {
-        show_invalid_args(args);
-        return 1;
-    }
-
+    //     return 0;
+    // }
+    //
+    // if (!CommModule::Instance->isReady()) {
+    //     printf("The radio interface is not ready! Unseen bugs may occur!\r\n");
+    // }
+    //
+    // if (args.size() == 1 || args.size() == 2) {
+    //     rtp::Packet pck("LINK TEST PAYLOAD");
+    //     auto portNbr = rtp::PortType::LINK;
+    //
+    //     if (args.size() > 1)
+    //         portNbr = static_cast<rtp::PortType>(atoi(args[1].c_str()));
+    //
+    //     pck.header.port = portNbr;
+    //     pck.header.address = rtp::BASE_STATION_ADDRESS;
+    //
+    //     if (args[0] == "test-tx") {
+    //         printf("Placing %u byte packet in TX buffer.\r\n",
+    //                pck.payload.size());
+    //         CommModule::Instance->send(std::move(pck));
+    //
+    //     } else if (args[0] == "test-rx") {
+    //         printf("Placing %u byte packet in RX buffer.\r\n",
+    //                pck.payload.size());
+    //         CommModule::Instance->receive(pck);
+    //
+    //     } else if (args[0] == "show") {
+    //         CommModule::Instance->printInfo();
+    //
+    //     } else if (args[0] == "loopback") {
+    //         pck.header.port = rtp::PortType::LINK;
+    //
+    //         unsigned int i = 1;
+    //         if (args.size() > 1) {
+    //             i = atoi(args[1].c_str());
+    //             portNbr = rtp::PortType::LINK;
+    //         }
+    //
+    //         pck.header.port = portNbr;
+    //         pck.header.address = rtp::LOOPBACK_ADDRESS;
+    //
+    //         printf(
+    //             "Placing %u, %u byte packet(s) in TX buffer with ACK set.\r\n",
+    //             i, pck.payload.size());
+    //
+    //         for (size_t j = 0; j < i; ++j) {
+    //             rtp::Packet pck2;
+    //             pck2 = pck;
+    //             CommModule::Instance->send(std::move(pck2));
+    //             Thread::wait(50);
+    //         }
+    //
+    //         // } else if (args[0] == "strobe") {
+    //         // globalRadio->strobe(0x30 + atoi(args[1].c_str()));
+    //         // } else if (args[0] == "debug") {
+    //         // bool wasEnabled = globalRadio->isDebugEnabled();
+    //         // globalRadio->setDebugEnabled(!wasEnabled);
+    //         // printf("Radio debugging now %s\r\n",
+    //         //    wasEnabled ? "DISABLED" : "ENABLED");
+    //     } else {
+    //         show_invalid_args(args[0]);
+    //         return 1;
+    //     }
+    // } else if (args.size() == 3) {
+    //     if (args[0] == "set") {
+    //         if (isPosInt(args[2].c_str())) {
+    //             unsigned int portNbr = atoi(args[2].c_str());
+    //
+    //             if (args[1] == "close") {
+    //                 CommModule::Instance->close(portNbr);
+    //                 printf("Port %u closed.\r\n", portNbr);
+    //
+    //             } else if (args[1] == "reset") {
+    //                 CommModule::Instance->resetCount(portNbr);
+    //                 printf("Reset packet counts for port %u.\r\n", portNbr);
+    //
+    //             } else {
+    //                 show_invalid_args(args);
+    //                 return 1;
+    //             }
+    //         } else {
+    //             show_invalid_args(args[2]);
+    //             return 1;
+    //         }
+    //     } else {
+    //         show_invalid_args(args[2]);
+    //         return 1;
+    //     }
+    // } else if (args.size() >= 4) {
+    //     if (args[0] == "stress-test") {
+    //         unsigned int packet_cnt = atoi(args[1].c_str());
+    //         unsigned int ms_delay = atoi(args[2].c_str());
+    //         unsigned int pck_size = atoi(args[3].c_str());
+    //         rtp::Packet pck(std::string(pck_size - 2, '~') + ".");
+    //
+    //         pck.header.port = rtp::PortType::LINK;
+    //         pck.header.address = rtp::LOOPBACK_ADDRESS;
+    //
+    //         printf(
+    //             "Beginning radio stress test with %u %u byte "
+    //             "packets. %ums delay between packets.\r\n",
+    //             packet_cnt, pck.payload.size(), ms_delay);
+    //
+    //         int start_tick = clock();
+    //         for (size_t i = 0; i < packet_cnt; ++i) {
+    //             Thread::wait(ms_delay);
+    //             CommModule::Instance->send(std::move(pck));
+    //         }
+    //         printf("Stress test finished in %.1fms.\r\n",
+    //                (clock() - start_tick) /
+    //                    static_cast<double>(CLOCKS_PER_SEC) * 1000);
+    //     }
+    // } else {
+    //     show_invalid_args(args);
+    //     return 1;
+    // }
+    //
     return 0;
 }
 
 int cmd_pong(cmd_args_t& args) {
-    CommModule::Instance->setTxHandler(globalRadio.get(), &CommLink::sendPacket,
-                                       rtp::PortType::PING);
-
-    // Any packets received on the PING port are placed in a queue.
-    Queue<rtp::Packet, 2> pings;
-    CommModule::Instance->setRxHandler([&pings](rtp::Packet pkt) {
-        pings.put(new rtp::Packet(std::move(pkt)));
-    }, rtp::PortType::PING);
-
-    while (true) {
-        // Check for a ping packet.  If we got one, print a message and reply
-        // with an ack packet.
-        uint32_t timeout_ms = 1;
-        osEvent maybePing = pings.get(timeout_ms);
-        if (maybePing.status == osEventMessage) {
-            rtp::Packet* ping = (rtp::Packet*)maybePing.value.p;
-            uint8_t pingNbr = ping->payload[0];
-            delete ping;
-
-            printf("Got ping %d\r\n", pingNbr);
-
-            // reply with ack
-            CommModule::Instance->send(
-                rtp::Packet({pingNbr}, rtp::PortType::PING));
-            printf("  Sent ack %d\r\n", pingNbr);
-        }
-
-        // quit when any character is typed
-        if (Console::Instance->pc.readable()) break;
-    }
-
-    // remove handlers, close port
-    CommModule::Instance->close(rtp::PortType::PING);
+    // CommModule::Instance->setTxHandler(globalRadio.get(), &CommLink::sendPacket,
+    //                                    rtp::PortType::PING);
+    //
+    // // Any packets received on the PING port are placed in a queue.
+    // Queue<rtp::Packet, 2> pings;
+    // CommModule::Instance->setRxHandler([&pings](rtp::Packet pkt) {
+    //     pings.put(new rtp::Packet(std::move(pkt)));
+    // }, rtp::PortType::PING);
+    //
+    // while (true) {
+    //     // Check for a ping packet.  If we got one, print a message and reply
+    //     // with an ack packet.
+    //     uint32_t timeout_ms = 1;
+    //     osEvent maybePing = pings.get(timeout_ms);
+    //     if (maybePing.status == osEventMessage) {
+    //         rtp::Packet* ping = (rtp::Packet*)maybePing.value.p;
+    //         uint8_t pingNbr = ping->payload[0];
+    //         delete ping;
+    //
+    //         printf("Got ping %d\r\n", pingNbr);
+    //
+    //         // reply with ack
+    //         CommModule::Instance->send(
+    //             rtp::Packet({pingNbr}, rtp::PortType::PING));
+    //         printf("  Sent ack %d\r\n", pingNbr);
+    //     }
+    //
+    //     // quit when any character is typed
+    //     if (Console::Instance->pc.readable()) break;
+    // }
+    //
+    // // remove handlers, close port
+    // CommModule::Instance->close(rtp::PortType::PING);
 
     return 0;
 }
 
 int cmd_ping(cmd_args_t& args) {
-    CommModule::Instance->setTxHandler(globalRadio.get(), &CommLink::sendPacket,
-                                       rtp::PortType::PING);
-
-    // Any packets received on the PING port are placed in a queue
-    Queue<rtp::Packet, 2> acks;
-    CommModule::Instance->setRxHandler([&acks](rtp::Packet pkt) {
-        acks.put(new rtp::Packet(std::move(pkt)));
-    }, rtp::PortType::PING);
-
-    uint8_t pingCount = 0;
-    int lastPingTime = 0;
-    const int PingInterval = 2;
-
-    while (true) {
-        // Send a ping packet if our interval has elapsed
-        if ((clock() - lastPingTime) / CLOCKS_PER_SEC > PingInterval) {
-            lastPingTime = clock();
-
-            CommModule::Instance->send(
-                rtp::Packet({pingCount}, rtp::PortType::PING));
-
-            printf("Sent ping %d\r\n", pingCount);
-
-            pingCount++;
-        }
-
-        // Print a message if we got an ack packet
-        uint32_t timeout_ms = 1;
-        osEvent maybeAck = acks.get(timeout_ms);
-        if (maybeAck.status == osEventMessage) {
-            rtp::Packet* ack = (rtp::Packet*)maybeAck.value.p;
-            printf("  got ack %d\r\n", ack->payload[0]);
-            delete ack;
-        }
-
-        // quit when any character is typed
-        if (Console::Instance->pc.readable()) break;
-    }
-
-    // remove handlers, close port
-    CommModule::Instance->close(rtp::PortType::PING);
+    // CommModule::Instance->setTxHandler(globalRadio.get(), &CommLink::sendPacket,
+    //                                    rtp::PortType::PING);
+    //
+    // // Any packets received on the PING port are placed in a queue
+    // Queue<rtp::Packet, 2> acks;
+    // CommModule::Instance->setRxHandler([&acks](rtp::Packet pkt) {
+    //     acks.put(new rtp::Packet(std::move(pkt)));
+    // }, rtp::PortType::PING);
+    //
+    // uint8_t pingCount = 0;
+    // int lastPingTime = 0;
+    // const int PingInterval = 2;
+    //
+    // while (true) {
+    //     // Send a ping packet if our interval has elapsed
+    //     if ((clock() - lastPingTime) / CLOCKS_PER_SEC > PingInterval) {
+    //         lastPingTime = clock();
+    //
+    //         CommModule::Instance->send(
+    //             rtp::Packet({pingCount}, rtp::PortType::PING));
+    //
+    //         printf("Sent ping %d\r\n", pingCount);
+    //
+    //         pingCount++;
+    //     }
+    //
+    //     // Print a message if we got an ack packet
+    //     uint32_t timeout_ms = 1;
+    //     osEvent maybeAck = acks.get(timeout_ms);
+    //     if (maybeAck.status == osEventMessage) {
+    //         rtp::Packet* ack = (rtp::Packet*)maybeAck.value.p;
+    //         printf("  got ack %d\r\n", ack->payload[0]);
+    //         delete ack;
+    //     }
+    //
+    //     // quit when any character is typed
+    //     if (Console::Instance->pc.readable()) break;
+    // }
+    //
+    // // remove handlers, close port
+    // CommModule::Instance->close(rtp::PortType::PING);
 
     return 0;
 }

@@ -24,51 +24,51 @@ using namespace std;
  * https://www.overleaf.com/2187548nsfdps
  */
 
-void loopback_ack_pck(rtp::Packet p) {
-    CommModule::Instance->send(std::move(p));
-}
+// void loopback_ack_pck(rtp::Packet p) {
+//     CommModule::Instance->send(std::move(p));
+// }
 
-void legacy_rx_cb(rtp::Packet p) {
-    if (p.payload.size()) {
-        LOG(DEBUG,
-            "Legacy rx successful!\r\n"
-            "    Received: %u bytes\r\n",
-            p.payload.size());
-    } else {
-        LOG(WARN, "Received empty packet on Legacy interface");
-    }
-}
+// void legacy_rx_cb(rtp::Packet p) {
+//     if (p.payload.size()) {
+//         LOG(DEBUG,
+//             "Legacy rx successful!\r\n"
+//             "    Received: %u bytes\r\n",
+//             p.payload.size());
+//     } else {
+//         LOG(WARN, "Received empty packet on Legacy interface");
+//     }
+// }
 
-void loopback_rx_cb(rtp::Packet p) {
-    std::vector<uint16_t> duty_cycles;
-    duty_cycles.assign(5, 100);
-    for (size_t i = 0; i < duty_cycles.size(); ++i)
-        duty_cycles.at(i) = 100 + 206 * i;
+// void loopback_rx_cb(rtp::Packet p) {
+//     std::vector<uint16_t> duty_cycles;
+//     duty_cycles.assign(5, 100);
+//     for (size_t i = 0; i < duty_cycles.size(); ++i)
+//         duty_cycles.at(i) = 100 + 206 * i;
+//
+//     if (p.payload.size()) {
+//         LOG(DEBUG,
+//             "Loopback rx successful!\r\n"
+//             "    Received: %u bytes",
+//             p.payload.size());
+//     } else {
+//         LOG(WARN, "Received empty packet on loopback interface");
+//     }
+// }
 
-    if (p.payload.size()) {
-        LOG(DEBUG,
-            "Loopback rx successful!\r\n"
-            "    Received: %u bytes",
-            p.payload.size());
-    } else {
-        LOG(WARN, "Received empty packet on loopback interface");
-    }
-}
-
-uint32_t loopback_tx_cb(const rtp::Packet* p) {
-    if (p->payload.size()) {
-        LOG(DEBUG,
-            "Loopback tx successful!\r\n"
-            "    Sent: %u bytes\r\n",
-            p->payload.size());
-    } else {
-        LOG(WARN, "Sent empty packet on loopback interface");
-    }
-
-    CommModule::Instance->receive(*p);
-
-    return COMM_SUCCESS;
-}
+// uint32_t loopback_tx_cb(const rtp::Packet* p) {
+//     if (p->payload.size()) {
+//         LOG(DEBUG,
+//             "Loopback tx successful!\r\n"
+//             "    Sent: %u bytes\r\n",
+//             p->payload.size());
+//     } else {
+//         LOG(WARN, "Sent empty packet on loopback interface");
+//     }
+//
+//     CommModule::Instance->receive(*p);
+//
+//     return COMM_SUCCESS;
+// }
 
 void InitializeCommModule(SharedSPIDevice<>::SpiPtrT sharedSPI) {
     // Startup the CommModule interface
@@ -83,8 +83,8 @@ void InitializeCommModule(SharedSPIDevice<>::SpiPtrT sharedSPI) {
     // Open a socket for running tests across the link layer
     // The LINK port handlers are always active, regardless of whether or not a
     // working radio is connected.
-    commModule->setRxHandler(&loopback_rx_cb, rtp::PortType::LINK);
-    commModule->setTxHandler(&loopback_tx_cb, rtp::PortType::LINK);
+    // commModule->setRxHandler(&loopback_rx_cb, rtp::PortType::LINK);
+    // commModule->setTxHandler(&loopback_tx_cb, rtp::PortType::LINK);
 
     /*
      * Ports are always displayed in ascending (lowest -> highest) order
@@ -94,9 +94,9 @@ void InitializeCommModule(SharedSPIDevice<>::SpiPtrT sharedSPI) {
         LOG(OK, "Radio interface ready!");
 
         // Legacy port
-        commModule->setTxHandler(globalRadio.get(), &CommLink::sendPacket,
-                                 rtp::PortType::LEGACY);
-        commModule->setRxHandler(&legacy_rx_cb, rtp::PortType::LEGACY);
+        // commModule->setTxHandler(globalRadio.get(), &CommLink::sendPacket,
+        //                          rtp::PortType::LEGACY);
+        // commModule->setRxHandler(&legacy_rx_cb, rtp::PortType::LEGACY);
 
 #ifndef NDEBUG
         LOG(INFO, "%u sockets opened", commModule->numOpenSockets());
@@ -104,9 +104,9 @@ void InitializeCommModule(SharedSPIDevice<>::SpiPtrT sharedSPI) {
 
         // Wait until the threads with the commModule are all started up
         // and ready
-        while (!commModule->isReady()) {
-            Thread::wait(50);
-        }
+        // while (!commModule->isReady()) {
+        //     Thread::wait(50);
+        // }
     } else {
         LOG(SEVERE, "No radio interface found!");
     }

@@ -46,13 +46,8 @@ void CommModule::txThread() {
         if (event.status == osEventMessage) {
             auto p = reinterpret_cast<rtp::Packet*>(event.value.p);
 
-// Bump up the thread's priority
-#ifndef NDEBUG
-            auto tState = osThreadSetPriority(m_txThreadId, osPriorityHigh);
+            [[gnu::unused]] auto tState = osThreadSetPriority(m_txThreadId, osPriorityHigh);
             ASSERT(tState == osOK);
-#else
-            osThreadSetPriority(m_txThreadId, osPriorityHigh);
-#endif
 
             // grab the port number
             const auto portNum = p->header.type;
@@ -76,12 +71,9 @@ void CommModule::txThread() {
             p->~Packet();
             osPoolFree(m_txPoolId, p);
 
-#ifndef NDEBUG
             tState = osThreadSetPriority(m_txThreadId, threadPriority);
             ASSERT(tState == osOK);
-#else
-            osThreadSetPriority(m_txThreadId, threadPriority);
-#endif
+
         } else {
             std::printf(
                 "osMessageGet for TX returned unexpected status: %d\r\n",
@@ -120,13 +112,9 @@ void CommModule::rxThread() {
         if (event.status == osEventMessage) {
             auto p = reinterpret_cast<rtp::Packet*>(event.value.p);
 
-// Bump up the thread's priority
-#ifndef NDEBUG
-            auto tState = osThreadSetPriority(m_rxThreadId, osPriorityHigh);
+            // Bump up the thread's priority
+            [[gnu::unused]] auto tState = osThreadSetPriority(m_rxThreadId, osPriorityHigh);
             ASSERT(tState == osOK);
-#else
-            osThreadSetPriority(m_rxThreadId, osPriorityHigh);
-#endif
 
             // grab the port number
             const auto portNum = p->header.type;
@@ -153,12 +141,9 @@ void CommModule::rxThread() {
             p->~Packet();
             osPoolFree(m_rxPoolId, p);
 
-#ifndef NDEBUG
             tState = osThreadSetPriority(m_rxThreadId, threadPriority);
             ASSERT(tState == osOK);
-#else
-            osThreadSetPriority(m_rxThreadId, threadPriority);
-#endif
+
         } else {
             std::printf(
                 "osMessageGet for RX returned unexpected status: %d\r\n",
