@@ -73,7 +73,7 @@ int main() {
         sent++;
         // printf("Sent: %d\r\n", sent);
         printf("Sent: %d, Recv: %d\r\n\033[1A", sent, recv);
-        if (sent>500) break;
+        // if (sent>500) break;
         Thread::wait(20);
     }
 }

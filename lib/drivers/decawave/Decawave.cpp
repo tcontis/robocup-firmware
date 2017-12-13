@@ -101,6 +101,7 @@ int32_t Decawave::sendPacket(const rtp::Packet* pkt) {
     header.control.frameType = DATA;
     header.control.ackRequest = pkt->macInfo.ackRequest;
     header.seqNum = pkt->macInfo.seqNum;
+    header.control.framePending = pkt->macInfo.framePending;
     header.destPAN = pkt->macInfo.destPAN;
     header.destAddr = pkt->macInfo.destAddr;
 
@@ -160,13 +161,14 @@ rtp::Packet Decawave::getData() {
     pkt.header = *(reinterpret_cast<const rtp::Header*>(m_rxBuffer.data() + bufOffset));
     bufOffset += sizeof(rtp::Header);
 
-    pkt.payload.assign(m_rxBuffer.begin() + bufOffset, m_rxBuffer.end());
+    pkt.payload.assign(m_rxBuffer.begin() + bufOffset, m_rxBuffer.end()-2);
 
     pkt.macInfo.seqNum = macHeader.seqNum;
     pkt.macInfo.destPAN = macHeader.destPAN;
     pkt.macInfo.destAddr = macHeader.destAddr;
     pkt.macInfo.srcAddr = macHeader.srcAddr;
     pkt.macInfo.ackRequest = macHeader.control.ackRequest;
+    pkt.macInfo.framePending = macHeader.control.framePending;
     pkt.empty = false;
 
     // move the buffer to the caller

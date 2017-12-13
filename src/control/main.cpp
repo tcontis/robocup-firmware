@@ -142,6 +142,9 @@ int main() {
     // before we hit the while loop
     statusLights(true);
 
+    DigitalOut myled(LED3);
+    myled = 1;
+
     // Set the default logging configurations
     isLogging = RJ_LOGGING_EN;
     rjLogLevel = INFO;
@@ -272,7 +275,7 @@ int main() {
 #endif
 
     // Initialize CommModule and radio
-    InitializeCommModule(spiBus);
+    // InitializeCommModule(spiBus);
 
     // Make sure all of the motors are enabled
     motors_Init();
@@ -283,6 +286,10 @@ int main() {
     uint8_t battVoltage = 0;
 
     // Setup radio protocol handling
+    CommModule::Instance = std::make_shared<CommModule>();
+    globalRadio = std::make_unique<Decawave>(spiBus, RJ_RADIO_nCS,
+                                             RJ_RADIO_INT, RJ_RADIO_nRESET);
+
     RadioProtocol radioProtocol(CommModule::Instance, globalRadio);
     radioProtocol.setUID(robotShellID);
     radioProtocol.start();

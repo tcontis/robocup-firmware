@@ -36,6 +36,7 @@ public:
 
 private:
     void rxControl(rtp::Packet pkt);
+    void rxFile(rtp::Packet pkt);
     void txRobotStatus();
 
     void radioTimeout();
