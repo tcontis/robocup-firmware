@@ -7,7 +7,7 @@ TESTS = *
 define cmake_build_target
 	mkdir -p build
 	# CMAKE_BUILD_TYPE Debug or Release
-	cd build && cmake -DCMAKE_BUILD_TYPE=Debug -Wno-dev --target $1 $2 .. && make $1 $(MAKE_FLAGS) -j
+	cd build && cmake -DCMAKE_BUILD_TYPE=Release -Wno-dev --target $1 $2 .. && make $1 $(MAKE_FLAGS) -j
 endef
 
 define cmake_build_target_debug
@@ -31,8 +31,8 @@ $(FIRMWARE_UPLOADS:%=%-prog):
 FIRMWARE_UPLOADS_DEBUG = control-debug kicker-debug fpga-debug base-debug
 $(FIRMWARE_UPLOADS_DEBUG):
 	$(call cmake_build_target_debug, $(@F:%-debug=%))
-$(FIRMWARE_UPLOADS:%=%-prog):
-	$(call cmake_build_target_debug, $(@F:%-debug-prog=%))
+$(FIRMWARE_UPLOADS_DEBUG:%=%-prog):
+	$(call cmake_build_target_debug, $(@F:%-debug-prog=%-prog))
 
 
 # Run both C++ and python unit tests
