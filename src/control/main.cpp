@@ -203,10 +203,11 @@ int main() {
 
     // Reprogramming each time (first arg of flash false) is actually
     // faster than checking the full memory to see if we need to reflash.
+    bool kicker_programmed; // Whether attiny was flashed
     KickerBoard::Instance =
         std::make_shared<KickerBoard>(spiBus, RJ_KICKER_nCS, RJ_KICKER_nRESET,
                                       RJ_BALL_LED, "/local/rj-kickr.nib");
-    KickerBoard::Instance->flash(false, false);
+    kicker_programmed = KickerBoard::Instance->flash(false, false);
 
     KickerBoard::Instance->start();
 
@@ -445,6 +446,12 @@ int main() {
         errorBitmask |= (1 << RJ_ERR_LED_DRIB);
     }
 
+    // Turn on LED is kicker not programmed
+    if (!kicker_programmed) {
+        printf("kicker_programmed is: %d\n\r", kicker_programmed);
+        errorBitmask |= (1 << RJ_ERR_LED_KICK);
+    }
+
 // cmd_heapfill();
 
 #if COMM_STRESS_TEST
@@ -536,7 +543,7 @@ _EXTERN void HardFault_Handler() {
         " ldr r1, [r0, #24]                                         \n"
         " ldr r2, hard_fault_handler_2_const                        \n"
         " bx r2                                                     \n"
-        " hard_fault_handler_2_const: .word HARD_FAULT_HANDLER    	\n");
+        " hard_fault_handler_2_const: .word HARD_FAULT_HANDLER      \n");
 }
 
 _EXTERN void HARD_FAULT_HANDLER(uint32_t* stackAddr) {
