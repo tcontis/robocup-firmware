@@ -29,19 +29,24 @@ bool initRadio() {
 }
 
 int recieved = 0;
-void radioPingHandler(rtp::Packet pkt) {
+void radioPingHandler(rtp::SubPacket pkt) {
     LOG(DEBUG, "radioRxHandler()");
-    recieved++;
-    printf("Recv: %d\r\n\033[1A", recieved);
 
-    if (pkt.macInfo.ackRequest) {
-        rtp::Packet pkt2;
-        pkt2.macInfo.destAddr = 0x0001;
-        pkt2.macInfo.seqNum = pkt.macInfo.seqNum;
-        pkt2.header.type = rtp::MessageType::PING;
-        pkt2.empty = false;
-        CommModule::Instance->send(std::move(pkt2));
-    }
+    // printf("Recv: %d\r\n\033[1A", recieved);
+
+    // if (pkt.macInfo.ackRequest) {
+    rtp::Packet pkt2;
+    pkt2.macInfo.destAddr = 0x0001;
+    pkt2.macInfo.seqNum = recieved;
+    pkt2.empty = false;
+    rtp::SubPacket subPacket;
+    subPacket.header.type = rtp::MessageType::PING;
+    subPacket.empty = false;
+    pkt2.subPackets.push_back(subPacket);
+    CommModule::Instance->send(std::move(pkt2));
+    // }
+
+    recieved++;
 }
 
 int main() {

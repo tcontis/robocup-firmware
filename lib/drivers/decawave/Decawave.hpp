@@ -45,13 +45,11 @@ struct MACHeader {
         srcAddr(rtp::BROADCAST_ADDR) {}
 } __attribute__((packed));
 
-class Decawave : public CommLink, public dw1000_api {
+class Decawave : public CommLink, private dw1000_api {
 public:
     Decawave(SpiPtrT sharedSPI, PinName nCs, PinName intPin, PinName _nReset);
 
     virtual int32_t sendPacket(const rtp::Packet* pkt) override;
-
-    virtual rtp::Packet getData() override;
 
     // virtual void reset() override { dwt_softreset(); }
     virtual void reset() override;
@@ -62,13 +60,8 @@ public:
 
     virtual void setAddress(int addr, int pan = rtp::BROADCAST_PAN) override;
 
-    virtual int writetospi(uint16 headerLength, const uint8* headerBuffer,
-                           uint32 bodylength, const uint8* bodyBuffer) override;
-    virtual int readfromspi(uint16 headerLength, const uint8* headerBuffer,
-                            uint32 readlength, uint8* readBuffer) override;
-    virtual decaIrqStatus_t decamutexon() override { return 0; }
-
-    void setLED(bool ledOn) { dwt_setleds(ledOn); };
+protected:
+    virtual rtp::Packet getData() override;
 
 private:
     static constexpr auto MAX_PACKET_LENGTH = 127;
@@ -78,6 +71,15 @@ private:
     uint32_t m_chipVersion;
     bool m_isInit = false;
     DigitalOut nReset;
+
+    virtual int writetospi(uint16 headerLength, const uint8* headerBuffer,
+                           uint32 bodylength, const uint8* bodyBuffer) override;
+    virtual int readfromspi(uint16 headerLength, const uint8* headerBuffer,
+                            uint32 readlength, uint8* readBuffer) override;
+    virtual decaIrqStatus_t decamutexon() override { return 0; }
+
+    //TODO: why?
+    void setLED(bool ledOn) { dwt_setleds(ledOn); };
 
     void getDataSuccess(const dwt_cb_data_t* cb_data);
     void getDataFail(const dwt_cb_data_t* cb_data);

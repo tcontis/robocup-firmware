@@ -3,11 +3,8 @@
 #include "Assert.hpp"
 #include "Logger.hpp"
 
-namespace {
-// DEFAULT_STACK_SIZE defined in rtos library
-constexpr auto STACK_SIZE = DEFAULT_STACK_SIZE / 2;
+constexpr auto STACK_SIZE = DEFAULT_STACK_SIZE;
 constexpr auto RX_PRIORITY = osPriorityHigh;
-}
 
 std::shared_ptr<CommLink> globalRadio = nullptr;
 
@@ -15,16 +12,15 @@ CommLink::CommLink(SpiPtrT sharedSPI, PinName nCs, PinName intPin)
     : SharedSPIDevice(sharedSPI, nCs, true),
       m_intIn(intPin),
       m_rxThread(&CommLink::rxThreadHelper, this, RX_PRIORITY, STACK_SIZE) {
+    // TODO: change thread init when RTOS updated
     setSPIFrequency(5'000'000);
     m_intIn.mode(PullDown);
-    ready();
 }
 
 // Task operations for placing received data into the received data queue
 void CommLink::rxThread() {
     // Store our priority so we know what to reset it to if ever needed
-    // const auto threadPriority = m_rxThread.get_priority();
-    //(void)threadPriority;  // disable compiler warning for unused-variable
+    // [[gnu::unused]] const auto threadPriority = m_rxThread.get_priority();
     // ASSERT(threadPriority != osPriorityError);
 
     // Set the function to call on an interrupt trigger
@@ -33,10 +29,8 @@ void CommLink::rxThread() {
     // Only continue past this point once the hardware link is initialized
     Thread::signal_wait(SIGNAL_START);
 
-    // LOG(OK, "RX communication link ready!\r\n    Thread ID: %u, Priority:
-    // %d",
-    //    reinterpret_cast<P_TCB>(m_rxThread.gettid())->task_id,
-    //    threadPriority);
+    // LOG(OK, "RX communication link ready!\r\n    Thread ID: %u, Priority: %d",
+    //    reinterpret_cast<P_TCB>(m_rxThread.gettid())->task_id, threadPriority);
 
     while (true) {
         // Wait until new data has arrived
@@ -52,6 +46,4 @@ void CommLink::rxThread() {
             CommModule::Instance->receive(std::move(response));
         }
     }
-
-    ASSERT(!"Execution is at an unreachable line!");
 }

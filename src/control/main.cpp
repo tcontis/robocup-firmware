@@ -29,52 +29,13 @@
 // #include <configuration/ConfigStore.hpp>
 #include <stall/stall.hpp>
 
-// set to 1 to enable CommModule rx/tx stress test
-#define COMM_STRESS_TEST (0)
-
 using namespace std;
 
 #ifdef NDEBUG
 LocalFileSystem local("local");
 #endif
 
-#if COMM_STRESS_TEST
-void Task_Simulate_RX_Packet(const void* args) {
-    auto commModule = CommModule::Instance;
-
-    while (true) {
-        Thread::wait(1);
-
-        rtp::Packet pkt;
-        pkt.header.port = rtp::PortType::CONTROL;
-        pkt.header.type = rtp::MessageType::CONTROL;
-        pkt.header.address = 1;
-
-        rtp::ControlMessage msg;
-        msg.uid = 1;
-        msg.bodyX = 0;
-        msg.bodyY = 0;
-        msg.bodyW = 0;
-        msg.dribbler = 0;
-        msg.kickStrength = 0;
-        msg.shootMode = 0;
-        msg.triggerMode = 0;
-        msg.song = 0;
-
-        auto payload = std::vector<uint8_t>{};
-        serializeToVector(msg, &payload);
-        pkt.payload = std::move(payload);
-
-        commModule->receive(std::move(pkt));
-
-        Thread::yield();
-    }
-}
-#endif
-
 void Task_Controller(const void* args);
-// void Task_Controller_UpdateTarget(Eigen::Vector3f targetVel);
-// void Task_Controller_UpdateDribbler(uint8_t dribbler);
 void InitializeCommModule(SharedSPIDevice<>::SpiPtrT sharedSPI);
 
 extern std::array<WheelStallDetection, 4> wheelStallDetection;
@@ -112,9 +73,6 @@ uint8_t atob(char char1, char char2) {
  * The entry point of the system where each submodule's thread is started.
  */
 int main() {
-    // disable write buffer use during default memory map accesses
-    // SCnSCB->ACTLR |= SCnSCB_ACTLR_DISDEFWBUF_Msk;
-
     // Store the thread's ID
     const auto mainID = Thread::gettid();
     ASSERT(mainID != nullptr);
@@ -129,6 +87,7 @@ int main() {
     }
 
     {
+        // Check if reset caused by MBED watchdog
         uint8_t wd_flag = (LPC_WDT->WDMOD >> 2) & 1;
         std::printf("Watchdog caused reset: %s\r\n",
                     (wd_flag > 0) ? "True" : "False");
@@ -140,10 +99,8 @@ int main() {
 
     // Turn on some startup LEDs to show they're working, they are turned off
     // before we hit the while loop
+    // TODO:
     statusLights(true);
-
-    DigitalOut myled(LED3);
-    myled = 1;
 
     // Set the default logging configurations
     isLogging = RJ_LOGGING_EN;
@@ -197,11 +154,9 @@ int main() {
 
     // Reprogramming each time (first arg of flash false) is actually
     // faster than checking the full memory to see if we need to reflash.
-    KickerBoard::Instance =
-        std::make_shared<KickerBoard>(spiBus, RJ_KICKER_nCS, RJ_KICKER_nRESET,
-                                      RJ_BALL_LED, "/local/rj-kickr.nib");
+    KickerBoard::Instance = std::make_shared<KickerBoard>(spiBus, RJ_KICKER_nCS,
+        RJ_KICKER_nRESET, RJ_BALL_LED, "/local/rj-kickr.nib");
     KickerBoard::Instance->flash(false, false);
-
     KickerBoard::Instance->start();
 
     init_leds_off.start(RJ_STARTUP_LED_TIMEOUT_MS);
@@ -229,8 +184,6 @@ int main() {
     }
     rgbLED.write();
 
-    // DigitalOut rdy_led(RJ_RDY_LED, !fpgaInitialized);
-
     // Init IO Expander and turn all LEDs on.  The first parameter to config()
     // sets the first 8 lines to input and the last 8 to output.  The pullup
     // resistors and polarity swap are enabled for the 4 rotary selector lines.
@@ -239,10 +192,6 @@ int main() {
     ioExpander.writeMask(static_cast<uint16_t>(~IOExpanderErrorLEDMask),
                          IOExpanderErrorLEDMask);
 
-    // DIP Switch 1 controls the radio channel.
-    // uint8_t currentRadioChannel = 0;
-    // IOExpanderDigitalInOut radioChannelSwitch(&ioExpander, RJ_DIP_SWITCH_1,
-    //                                           MCP23017::DIR_INPUT);
 
     // rotary selector for shell id
     RotarySelector<IOExpanderDigitalInOut> rotarySelector(
@@ -264,6 +213,7 @@ int main() {
     // a multi-core system.
 
     // Start the thread task for the on-board control loop
+    // TODO: change when RTOS is updated
     Thread controller_task(Task_Controller, mainID, osPriorityHigh,
                            DEFAULT_STACK_SIZE / 2);
     Thread::signal_wait(MAIN_TASK_CONTINUE, osWaitForever);
@@ -290,9 +240,9 @@ int main() {
     globalRadio = std::make_unique<Decawave>(spiBus, RJ_RADIO_nCS,
                                              RJ_RADIO_INT, RJ_RADIO_nRESET);
 
-    RadioProtocol radioProtocol(CommModule::Instance, globalRadio);
-    radioProtocol.setUID(robotShellID);
-    radioProtocol.start();
+    RadioProtocol::Instance = std::make_shared<RadioProtocol>(CommModule::Instance, globalRadio);
+    RadioProtocol::Instance->setUID(robotShellID);
+    RadioProtocol::Instance->start();
 
     // radioProtocol.debugCallback = [&](const rtp::DebugMessage& msg) {
     //     //            DebugCommunication::debugResponses = msg.keys;
@@ -338,10 +288,6 @@ int main() {
     }
 
 // cmd_heapfill();
-
-#if COMM_STRESS_TEST
-    Thread sim_task(Task_Simulate_RX_Packet, mainID, osPriorityAboveNormal);
-#endif
 
     while (true) {
         // make sure we can always reach back to main by
@@ -389,7 +335,9 @@ int main() {
 
         // update shell id
         robotShellID = rotarySelector.read();
-        radioProtocol.setUID(robotShellID);
+        RadioProtocol::Instance->setUID(robotShellID);
+
+        // LOG(INFO, "%f", RadioProtocol::Instance->getDebug(rtp::TEST, 0));
 
         // update radio channel
         // auto newRadioChannel = static_cast<uint8_t>(radioChannelSwitch.read());

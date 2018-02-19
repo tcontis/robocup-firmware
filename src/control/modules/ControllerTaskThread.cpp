@@ -17,6 +17,7 @@
 #include "motors.hpp"
 #include "mpu-6050.hpp"
 #include "stall/stall.hpp"
+#include "RadioProtocol.hpp"
 using namespace std;
 
 // Keep this pretty high for now. Ideally, drop it down to ~3 for production
@@ -180,107 +181,18 @@ void Task_Controller(const void* args) {
         // motors.
         std::array<int16_t, 4> driveMotorDutyCycles = pidController.run(
             driveMotorEnc, dt, &errors, &wheelVelsOut, &targetWheelVelsOut);
-        //
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::PIDError0] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::PIDError0, errors[0]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::PIDError1] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::PIDError1, errors[1]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::PIDError2] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::PIDError2, errors[2]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::PIDError3] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::PIDError3, errors[3]);
-        //
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::MotorDuty0] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::MotorDuty0,
-        //             duty_cycles[0]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::MotorDuty1] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::MotorDuty1,
-        //             duty_cycles[1]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::MotorDuty2] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::MotorDuty2,
-        //             duty_cycles[2]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::MotorDuty3] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::MotorDuty3,
-        //             duty_cycles[3]);
-        //
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::WheelVel0] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::WheelVel0,
-        //             wheelVelsOut[0]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::WheelVel1] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::WheelVel1,
-        //             wheelVelsOut[1]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::WheelVel2] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::WheelVel2,
-        //             wheelVelsOut[2]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::WheelVel3] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::WheelVel3,
-        //             wheelVelsOut[3]);
-        //
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::StallCounter0] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::StallCounter0,
-        //             wheelStallDetection[0].stall_counter);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::StallCounter1] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::StallCounter1,
-        //             wheelStallDetection[1].stall_counter);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::StallCounter2] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::StallCounter2,
-        //             wheelStallDetection[2].stall_counter);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::StallCounter3] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::StallCounter3,
-        //             wheelStallDetection[3].stall_counter);
-        //
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::TargetWheelVel0] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::TargetWheelVel0,
-        //             targetWheelVelsOut[0]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::TargetWheelVel1] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::TargetWheelVel1,
-        //             targetWheelVelsOut[1]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::TargetWheelVel2] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::TargetWheelVel2,
-        //             targetWheelVelsOut[2]);
-        // DebugCommunication::debugStore
-        //     [DebugCommunication::DebugResponse::TargetWheelVel3] =
-        //         DebugCommunication::debugResponseToValue(
-        //             DebugCommunication::DebugResponse::TargetWheelVel3,
-        //             targetWheelVelsOut[3]);
+
+        // Populate debug information
+        for (auto i = 0; i < 4; i++) {
+            RadioProtocol::Instance->updateDebug(rtp::PID_ERROR, errors[i], i);
+            RadioProtocol::Instance->updateDebug(rtp::WHEEL_VEL, wheelVelsOut[i], i);
+            RadioProtocol::Instance->updateDebug(rtp::STALL_COUNTER, wheelStallDetection[i].stall_counter, i);
+            RadioProtocol::Instance->updateDebug(rtp::TARGET_WHEEL_VEL, targetWheelVelsOut[i], i);
+        }
+        for (auto i = 0; i < 5; i++) {
+            RadioProtocol::Instance->updateDebug(rtp::MOTOR_DUTY, duty_cycles[i], i);
+        }
+        RadioProtocol::Instance->updateDebug(rtp::TEST, 11, 0);
 
         // assign the duty cycles, zero out motors that the fpga returns an
         // error for

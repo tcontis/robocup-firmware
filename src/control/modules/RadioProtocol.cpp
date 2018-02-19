@@ -10,9 +10,10 @@
 void Task_Controller_UpdateTarget(Eigen::Vector3f targetVel);
 void Task_Controller_UpdateDribbler(uint8_t dribbler);
 
+std::shared_ptr<RadioProtocol> RadioProtocol::Instance = nullptr;
+
 RadioProtocol::RadioProtocol(std::shared_ptr<CommModule> commModule,
-              std::shared_ptr<CommLink> commLink,
-              uint8_t uid)
+              std::shared_ptr<CommLink> commLink, uint8_t uid)
     : m_commModule(commModule),
       m_radio(commLink),
       m_uid(uid),
@@ -31,10 +32,14 @@ void RadioProtocol::start() {
 
     m_commModule->setRxHandler(this, &RadioProtocol::rxControl,
                                rtp::MessageType::CONTROL);
-    m_commModule->setRxHandler(this, &RadioProtocol::rxFile,
-                              rtp::MessageType::FILE);
+    m_commModule->setRxHandler(this, &RadioProtocol::rxDebugRequest,
+                               rtp::MessageType::DEBUG_REQUEST);
+    // m_commModule->setRxHandler(this, &RadioProtocol::rxFile,
+    //                           rtp::MessageType::FILE);
     m_commModule->setTxHandler(m_radio.get(), &CommLink::sendPacket,
                                rtp::MessageType::ROBOT_STATUS);
+    m_commModule->setTxHandler(m_radio.get(), &CommLink::sendPacket,
+                               rtp::MessageType::DEBUG_RESPONSE);
     m_commModule->setTxHandler(m_radio.get(), &CommLink::sendPacket,
                               rtp::MessageType::PKT_ACK);
 
@@ -45,10 +50,6 @@ void RadioProtocol::start() {
         LOG(OK, "Radio interface ready!");
     } else {
         LOG(SEVERE, "No radio interface found!");
-    }
-
-    while (!m_commModule->isReady()) {
-        Thread::wait(50);
     }
 }
 
@@ -65,9 +66,9 @@ void RadioProtocol::stop() {
 }
 
 
-void RadioProtocol::rxControl(rtp::Packet pkt) {
+void RadioProtocol::rxControl(rtp::SubPacket subPkt) {
     const rtp::ControlMessage* msg =
-        reinterpret_cast<const rtp::ControlMessage*>(pkt.payload.data());
+        reinterpret_cast<const rtp::ControlMessage*>(subPkt.payload.data());
 
     m_state = State::CONNECTED;
 
@@ -145,178 +146,47 @@ void RadioProtocol::rxControl(rtp::Packet pkt) {
     reply.kickStatus = KickerBoard::Instance->getVoltage() > 230;
     // reply.kickHealthy = KickerBoard::Instance->isHealthy();
 
-    vector<uint8_t> replyBuf;
-    rtp::serializeToVector(reply, &replyBuf);
-    m_robotStatus = std::move(replyBuf);
+    rtp::SubPacket subPktResp;
+    rtp::serializeToVector(reply, &subPktResp.payload);
+    subPktResp.header.type = rtp::MessageType::ROBOT_STATUS;
+    subPktResp.empty = false;
+    m_subPackets.push_back(std::move(subPktResp));
 }
 
-int fileCopy(const char* local_file1, const char* local_file2) {
-    FILE *rp = fopen(local_file1, "rb");
-    if (rp == NULL) {
-        return -1;
+void RadioProtocol::rxDebugRequest(rtp::SubPacket subPkt) {
+    const rtp::DebugRequestMessage* msg =
+        reinterpret_cast<const rtp::DebugRequestMessage*>(subPkt.payload.data());
+
+    if (m_debugVars.find(msg->debugType) != m_debugVars.end()) {
+        // TODO: don't do this
+        const uint32_t SLOT_DELAY = 2;
+        m_robotStatusTimer.start(1 + SLOT_DELAY * (m_uid % 6));
+
+        rtp::DebugResponseMessage response;
+
+        response.debugType = msg->debugType;
+        std::copy(m_debugVars.at(msg->debugType).begin(),
+            m_debugVars.at(msg->debugType).end(), std::begin(response.values));
+
+        rtp::SubPacket subPktResp;
+        subPktResp.header.type = rtp::MessageType::DEBUG_RESPONSE;
+        subPktResp.empty = false;
+        rtp::serializeToVector(response, &subPktResp.payload);
+        m_subPackets.push_back(std::move(subPktResp));
     }
-    remove(local_file2);
-    FILE *wp = fopen(local_file2, "wb");
-    if (wp == NULL) {
-        fclose(rp);
-        return -2;
-    }
-    int c;
-    // while ((c = fgetc(rp)) != EOF) {
-    //     fputc(c, wp);
-    // }
-    uint8_t temp[100];
-    while (!feof(rp)) {
-        // printf("b");
-        int count = fread(temp, 1, 100, rp);
-        fwrite(temp, 1, count, wp);
-        // Thread::wait(10);
-    }
-    fclose(rp);
-    fclose(wp);
-    return 0;
 }
-
-extern "C" void mbed_reset();
-
-int cleanupBin() {
-    struct dirent *p;
-    DIR *dir = opendir("/local");
-    if (dir == NULL) {
-        return -1;
-    }
-    while ((p = readdir(dir)) != NULL) {
-        char *str = p->d_name;
-        if ((strstr(str, ".bin") != NULL) || (strstr(str, ".BIN") != NULL)) {
-            char buf[BUFSIZ];
-            snprintf(buf, sizeof(buf) - 1, "/local/%s", str);
-            remove(buf);
-        }
-    }
-    closedir(dir);
-    return 0;
-}
-
-FILE *fp;
-uint16_t fileSeqNum = 0;
-void RadioProtocol::rxFile(rtp::Packet pkt) {
-    if (pkt.header.seqNum == (fileSeqNum)) {
-        if (fileSeqNum == 0) {
-            FILE *fp2;
-            if ((fp2 = fopen("/local/firm1.bin", "r")) == 0) {
-              cleanupBin();
-              fp = fopen("/local/firm1.bin", "wb");
-            } else {
-              cleanupBin();
-              fp = fopen("/local/firm2.bin", "wb");
-            }
-            LOG(INFO, "File transfer opened");
-        }
-        fileSeqNum++;
-        fwrite(pkt.payload.data(), 1, pkt.payload.size(), fp);
-        if (pkt.macInfo.framePending != 1) {
-            LOG(INFO, "File transfer closed");
-            fileSeqNum = -1;
-            fclose(fp);
-            // remove("/local/tmp.bin");
-            // int res = rename("/local/mbed.htm", "/local/tmp.bin");
-            // printf("res: %d\r\n", res);
-            // printf("Error: %s\r\n", strerror(errno));
-            printf("start copy\r\n");
-            Thread::wait(3000);
-            // fileCopy("/local/temp.bin", "/local/tmp.bin");
-            printf("stop copy\r\n");
-            mbed_reset();
-        }
-    }
-
-    printf("%d  %d\r\n", pkt.header.seqNum, fileSeqNum);
-
-    rtp::Packet pkt2;
-    pkt2.macInfo.destAddr = 0x0000;
-    pkt2.macInfo.destPAN = rtp::BASE_PAN;
-    pkt2.header.seqNum = fileSeqNum;
-    pkt2.header.type = rtp::MessageType::PKT_ACK;
-    pkt2.empty = false;
-
-    m_commModule->send(std::move(pkt2));
-}
-
-// void rxHandler(rtp::Packet pkt) {
-//     // TODO: check packet size before parsing
-//     //        bool addressed = false;
-//     const rtp::ControlMessage* controlMessage = nullptr;
-//     // printf("UUIDs: ");
-//     const auto messages =
-//         reinterpret_cast<const rtp::RobotTxMessage*>(pkt.payload.data());
-//
-//     size_t slot;
-//     for (size_t i = 0; i < 6; i++) {
-//         auto msg = std::next(messages, i);
-//
-//         // printf("%d:%d ", slot, msg->uid);
-//         if (msg->uid == m_uid) {
-//             if (msg->messageType ==
-//                 rtp::RobotTxMessage::ControlMessageType) {
-//                 controlMessage = &msg->message.controlMessage;
-//             }
-//             slot = i;
-//         }
-//     }
-//
-//     /// time, in ms, for each reply slot
-//     // TODO(justin): double-check this
-//     const uint32_t SLOT_DELAY = 2;
-//
-//     m_state = State::CONNECTED;
-//
-//     // reset timeout whenever we receive a packet
-//     m_timeoutTimer.stop();
-//     m_timeoutTimer.start(TIMEOUT_INTERVAL);
-//
-//     // TODO: this is bad and lazy
-//     if (controlMessage) {
-//         m_replyTimer.start(1 + SLOT_DELAY * slot);
-//     } else {
-//         m_replyTimer.start(1 + SLOT_DELAY * (m_uid % 6));
-//     }
-//
-//     if (rxCallback) {
-//         m_reply = rxCallback(controlMessage, controlMessage != nullptr);
-//     } else {
-//         LOG(WARN, "no callback set");
-//     }
-//
-//     for (size_t i = 0; i < 6; i++) {
-//         auto msg = std::next(messages, i);
-//         if (msg->uid == m_uid || msg->uid == rtp::ANY_ROBOT_UID) {
-//             if (msg->messageType == rtp::RobotTxMessage::ConfMessageType) {
-//                 if (confCallback) {
-//                     const auto confMessage = msg->message.confMessage;
-//                     confCallback(confMessage);
-//                 }
-//             } else if (msg->messageType ==
-//                        rtp::RobotTxMessage::DebugMessageType) {
-//                 if (debugCallback) {
-//                     const auto debugMessage = msg->message.debugMessage;
-//                     debugCallback(debugMessage);
-//                 }
-//             }
-//         }
-//     }
-// }
 
 void RadioProtocol::txRobotStatus() {
     rtp::Packet pkt;
     pkt.macInfo.destAddr = 0x0000;
     pkt.macInfo.destPAN = rtp::BASE_PAN;
     pkt.macInfo.seqNum = pkt.macInfo.seqNum;
-    pkt.header.type = rtp::MessageType::ROBOT_STATUS;
     pkt.empty = false;
 
-    pkt.payload = std::move(m_robotStatus);
-
+    std::copy(m_subPackets.begin(), m_subPackets.end(),
+        std::back_inserter(pkt.subPackets));
     m_commModule->send(std::move(pkt));
+    m_subPackets.clear();
 }
 
 void RadioProtocol::timeout() {
@@ -335,4 +205,19 @@ void RadioProtocol::radioTimeout() {
 
     m_radio->reset();
     setUID(m_uid);
+}
+
+void RadioProtocol::updateDebug(rtp::DebugVar debugVar, float value, int index) {
+    if (m_debugVars.find(debugVar) != m_debugVars.end()) {
+        m_debugVars.at(debugVar)[index] = value;
+    } else {
+        std::array<float, 5> array;
+        array[index] = value;
+        m_debugVars.emplace(debugVar, array);
+    }
+    // m_debugVars.at(debugVar)[index] = value;
+}
+
+float RadioProtocol::getDebug(rtp::DebugVar debugVar, int index) {
+    return m_debugVars.at(debugVar)[index];
 }

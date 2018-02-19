@@ -116,13 +116,15 @@ int32_t Decawave::sendPacket(const rtp::Packet* pkt) {
     // MAC layer header for Decawave
     m_txBuffer.insert(m_txBuffer.end(), headerFirstPtr, headerLastPtr);
 
-    const auto rtpHeaderFirstPtr = reinterpret_cast<const uint8_t*>(&pkt->header);
-    const auto rtpHeaderLastPtr = rtpHeaderFirstPtr + sizeof(rtp::Header);
-    // insert the rtp header
-    m_txBuffer.insert(m_txBuffer.end(), rtpHeaderFirstPtr, rtpHeaderLastPtr);
+    for (auto subPacket : pkt->subPackets) {
+        const auto rtpHeaderFirstPtr = reinterpret_cast<const uint8_t*>(&subPacket.header);
+        const auto rtpHeaderLastPtr = rtpHeaderFirstPtr + sizeof(rtp::Header);
+        // insert the rtp header
+        m_txBuffer.insert(m_txBuffer.end(), rtpHeaderFirstPtr, rtpHeaderLastPtr);
 
-    // insert the rtp payload
-    m_txBuffer.insert(m_txBuffer.end(), pkt->payload.begin(), pkt->payload.end());
+        // insert the rtp payloads
+        m_txBuffer.insert(m_txBuffer.end(), subPacket.payload.begin(), subPacket.payload.end());
+    }
     // insert padding for CRC
     m_txBuffer.insert(m_txBuffer.end(), {0x00, 0x00});
 
@@ -158,10 +160,16 @@ rtp::Packet Decawave::getData() {
     MACHeader macHeader = *(reinterpret_cast<const MACHeader*>(m_rxBuffer.data() + bufOffset));
     bufOffset += sizeof(MACHeader);
 
-    pkt.header = *(reinterpret_cast<const rtp::Header*>(m_rxBuffer.data() + bufOffset));
-    bufOffset += sizeof(rtp::Header);
+    while (m_rxBuffer.begin() + bufOffset != m_rxBuffer.end() - 2) {
+        rtp::SubPacket subPacket;
+        subPacket.header = *(reinterpret_cast<const rtp::Header*>(m_rxBuffer.data() + bufOffset));
+        bufOffset += sizeof(rtp::Header);
+        size_t packetSize = rtp::SubPacket::messageSize(subPacket.header.type);
 
-    pkt.payload.assign(m_rxBuffer.begin() + bufOffset, m_rxBuffer.end()-2);
+        subPacket.payload.assign(m_rxBuffer.begin() + bufOffset, m_rxBuffer.begin() + bufOffset + packetSize);
+        bufOffset += packetSize;
+        pkt.subPackets.push_back(std::move(subPacket));
+    }
 
     pkt.macInfo.seqNum = macHeader.seqNum;
     pkt.macInfo.destPAN = macHeader.destPAN;

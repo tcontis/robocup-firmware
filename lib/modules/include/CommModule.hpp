@@ -26,7 +26,7 @@
 class CommModule {
 public:
     /// Type aliases
-    using RxCallbackSigT = void(rtp::Packet);
+    using RxCallbackSigT = void(rtp::SubPacket);
     using TxCallbackSigT = uint32_t(const rtp::Packet*);
     using RxCallbackT = std::function<RxCallbackSigT>;
     using TxCallbackT = std::function<TxCallbackSigT>;
@@ -34,9 +34,6 @@ public:
 
     /// Global singleton instance of CommModule
     static std::shared_ptr<CommModule> Instance;
-
-    /// The constructor initializes and starts threads and mail queues
-    CommModule();
 
     /// Assign an RX callback function to a port
     void setRxHandler(RxCallbackT callback, rtp::MessageType portNbr);
@@ -46,7 +43,7 @@ public:
 
     /// Assign an RX callback method to a port
     template <typename B>
-    void setRxHandler(B* obj, void (B::*mptr)(rtp::Packet), rtp::MessageType portNbr) {
+    void setRxHandler(B* obj, void (B::*mptr)(rtp::SubPacket), rtp::MessageType portNbr) {
         setRxHandler(std::bind(mptr, obj, std::placeholders::_1), portNbr);
     }
 
@@ -66,9 +63,6 @@ public:
     /// Close a port that was previouly assigned callback functions/methods
     void close(rtp::MessageType portNbr) noexcept;
 
-    /// Check if everything is ready for sending/receiving packets
-    inline bool isReady() const noexcept { return m_isReady && m_isRunning; }
-
 #ifndef NDEBUG
     /// Retuns the number of ports with a binded callback function/method
     unsigned int numOpenSockets() const;
@@ -86,46 +80,6 @@ public:
     void printInfo() const;
 #endif
 
-protected:
-    static constexpr size_t SIGNAL_START = (1 << 0);
-
-    osPoolId m_txPoolId;
-    osPoolId m_rxPoolId;
-
-    osMessageQId m_txMessageQueue;
-    osMessageQId m_rxMessageQueue;
-
 private:
-    // DEFAULT_STACK_SIZE defined in rtos library
-    static constexpr size_t STACK_SIZE = DEFAULT_STACK_SIZE / 2;
-
-    static constexpr osPriority RX_PRIORITY = osPriorityAboveNormal;
-    static constexpr osPriority TX_PRIORITY = osPriorityAboveNormal;
-
     std::map<rtp::MessageType, PortT> m_ports;
-
-    Thread m_rxThread;
-    Thread m_txThread;
-
-    osThreadId m_rxThreadId;
-    osThreadId m_txThreadId;
-
-    bool m_isReady{false};
-    bool m_isRunning{false};
-
-    void ready();
-    void txThread();
-    void rxThread();
-
-    // The threadHelper methods accept a CommModule pointer as a parameter
-    inline static void rxThreadHelper(const void* moduleInst) {
-        auto module = reinterpret_cast<CommModule*>(
-            const_cast<void*>(moduleInst));  // dangerous
-        module->rxThread();
-    }
-    inline static void txThreadHelper(const void* moduleInst) {
-        auto module = reinterpret_cast<CommModule*>(
-            const_cast<void*>(moduleInst));  // dangerous
-        module->txThread();
-    }
 };

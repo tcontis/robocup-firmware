@@ -23,20 +23,11 @@ public:
     using BufferPtrT = BufferT*;
     using ConstBufferPtrT = const BufferT*;
 
-    // Class constants for data queues
-    static constexpr size_t RX_QUEUE_SIZE = 2;
-
     /// Constructor
     CommLink(SpiPtrT spiBus, PinName nCs = NC, PinName intPin = NC);
 
     /// Kills any threads and frees the allocated stack.
     virtual ~CommLink() = default;
-
-    // CommLink(const CommLink&) = default;
-    // CommLink& operator=(const CommLink&) = default;
-    //
-    // CommLink(CommLink&&) = default;
-    // CommLink& operator=(CommLink&&) = default;
 
     // The pure virtual methods for making CommLink an abstract class
     /// Perform a soft reset for a communication link's hardware device
@@ -65,13 +56,6 @@ protected:
     int m_pan = rtp::BROADCAST_PAN;
     InterruptIn m_intIn;
 
-    /**
-     * @brief Read data from the radio's RX buffer
-     *
-     * @param buf The buffer to write data into
-     *
-     * @return A vector of received bytes returned with std::move
-     */
     virtual rtp::Packet getData() = 0;
 
     /// Interrupt Service Routine
@@ -79,11 +63,6 @@ protected:
 
     /// Called by the derived class to begin thread operations
     void ready() { m_rxThread.signal_set(SIGNAL_START); }
-
-    template <typename T>
-    constexpr static T twos_compliment(T val) {
-        return ~val + 1;
-    }
 
 private:
     Thread m_rxThread;
