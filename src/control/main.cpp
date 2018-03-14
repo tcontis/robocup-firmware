@@ -187,7 +187,7 @@ int main() {
     rgbLED.setPixel(1, red, green, blue);
     rgbLED.write();
 
-    // Set neopixel 1 to purple if git version is dirty
+    // Set neopixel 1 to red if git version is dirty
     if (git_version_dirty) {
         rgbLED.setPixel(1, NeoColorRed);
         rgbLED.write();
@@ -203,7 +203,7 @@ int main() {
 
     // Reprogramming each time (first arg of flash false) is actually
     // faster than checking the full memory to see if we need to reflash.
-    bool kicker_programmed; // Whether attiny was flashed
+    bool kicker_programmed;  // Whether attiny was flashed
     KickerBoard::Instance =
         std::make_shared<KickerBoard>(spiBus, RJ_KICKER_nCS, RJ_KICKER_nRESET,
                                       RJ_BALL_LED, "/local/rj-kickr.nib");

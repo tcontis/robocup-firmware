@@ -95,7 +95,6 @@ int main() {
     FPGA::Instance = new FPGA(sharedSPI, RJ_FPGA_nCS, RJ_FPGA_INIT_B,
                               RJ_FPGA_PROG_B, RJ_FPGA_DONE);
 
-
     MPU6050 mpu(RJ_I2C_SDA, RJ_I2C_SCL, 400000);
 
     MCP23017 io_expander(RJ_I2C_SDA, RJ_I2C_SCL, RJ_IO_EXPANDER_I2C_ADDRESS);
@@ -190,7 +189,8 @@ int main() {
 
     pc.printf("-- Testing Decawave -- \n\r");
     decawave_working = test_decawave(sharedSPI);
-    pc.printf("   Test %s\n\n\n\r", (decawave_working ? "Succeeded" : "Failed"));
+    pc.printf("   Test %s\n\n\n\r",
+              (decawave_working ? "Succeeded" : "Failed"));
 
     pc.printf("========= END OF TESTS =========\r\n\r\n");
 
