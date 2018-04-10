@@ -4,7 +4,7 @@
 #include "Decawave.hpp"
 #include "Rtos.hpp"
 #include "RtosTimerHelper.hpp"
-#include "firmware-common/rtp.hpp"
+#include "rc-fshare/rtp.hpp"
 #include "Logger.hpp"
 
 class RadioProtocol {

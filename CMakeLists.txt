@@ -1,6 +1,5 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.1)
 project("GT RoboJackets RoboCup Firmware")
-
 
 # include cmake files in the 'cmake folder'
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -18,20 +17,12 @@ if ( APPLE )
 endif ()
 
 # Google test
-# enable_testing()
-# include(SetupGTest)
+enable_testing()
+include(SetupGTest)
 
 # C++ version
-if ("${CMAKE_VERSION}" LESS "3.1")
-    # This is to support the CMake version backported to Ubuntu 14.04
-    message("CMAKE_VERSION < 3.1, specifying c++14 flag.")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-else()
-    # This is the more modern way of setting our c++ version
-    message("CMAKE_VERSION >= 3.1, setting CMAKE_CXX_STANDARD to 14.")
-    set(CMAKE_CXX_STANDARD 14)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON) # Don't fall back to older versions
-endif()
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON) # Don't fall back to older versions
 
 # Because we use ninja, we have to explicitly turn on color output for the compiler
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -61,12 +52,6 @@ find_package(libusb-1.0 REQUIRED)
 
 # SDL
 find_package(SDL REQUIRED)
-
-
-
-# run all the other CMakeLists files
-# add_subdirectory(common)
-# add_subdirectory(firmware)
 
 # This sets up MBED all MBED libraries, then sets up the robot and base station
 # firmware, which depend on the MBED libs
@@ -102,8 +87,8 @@ endif()
 set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -fexceptions")
 # the mbed libraries are compiled with -fno-rtti, so we need to as well
 set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -fno-rtti")
-# Required to compile protobuf with no-rtti
-set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -DGOOGLE_PROTOBUF_NO_RTTI")
+# # Required to compile protobuf with no-rtti
+# set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -DGOOGLE_PROTOBUF_NO_RTTI")
 # enable C++14
 set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -std=c++14")
 # Enable logging for the firm-lib library
@@ -126,21 +111,12 @@ set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 # # Don't build the tests by default
 # set_target_properties(test-firmware PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-# TODO: probably move this to lib cmake
-# Several things depend on the headers in the 'common' directory
-# include_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/common") # for headers in common/
-# include_directories("${CMAKE_CURRENT_BINARY_DIR}/lib/common") # for generated protobuf headers
-include_directories("${PROJECT_SOURCE_DIR}/lib/common") # for headers in common/
-include_directories("${PROJECT_BINARY_DIR}/lib/common") # for generated protobuf headers
-include_directories("${CMAKE_BINARY_DIR}/lib/common") # for generated protobuf headers
-
-add_subdirectory(lib/common)
-
 # Add a test runner target "test-firmware"
 file(GLOB FIRMWARE_TEST_SRC "lib/test/*.cpp")
 add_executable(test-firmware ${FIRMWARE_TEST_SRC})
-# add_dependencies(test-firmware googletest)
-# target_link_libraries(test-firmware ${GTEST_LIBRARIES})
+add_dependencies(test-firmware googletest)
+target_link_libraries(test-firmware ${GTEST_LIBRARIES})
+target_link_libraries(test-firmware rc-fshare)
 
 target_include_directories(test-firmware PRIVATE "lib" "lib/test" "lib/utils/include" "lib/modules/include")
 target_compile_definitions(test-firmware PRIVATE -D__MBED_TEST__)
@@ -148,6 +124,5 @@ set_target_properties(test-firmware PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # build robot and base station firmware and the library that they depend on
 add_subdirectory(lib/mbed)
-
 add_subdirectory(lib)
 add_subdirectory(src)

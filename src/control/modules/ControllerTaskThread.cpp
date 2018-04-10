@@ -1,7 +1,6 @@
 #include <cmath>
 
-// #include <configuration/ConfigStore.hpp>
-#include <Geometry2d/Util.hpp>
+#include <configuration/ConfigStore.hpp>
 #include "Assert.hpp"
 #include "Console.hpp"
 // #include "ConfigStore.hpp"
@@ -15,7 +14,7 @@
 #include "TaskSignals.hpp"
 #include "io-expander.hpp"
 #include "motors.hpp"
-#include "mpu-6050.hpp"
+//#include "mpu-6050.hpp"
 #include "stall/stall.hpp"
 #include "RadioProtocol.hpp"
 using namespace std;
