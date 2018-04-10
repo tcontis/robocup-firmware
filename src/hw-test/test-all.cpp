@@ -135,15 +135,15 @@ int main() {
         char returnedVal;
         pc.printf("-- Testing Rotary Knob --\n\r");
 
-        pc.printf("Rotate the rotary knob fully\n\r");
+        // pc.printf("Rotate the rotary knob fully\n\r");
 
-        // pc.printf("Expected value of rotary knob in hex (0-F): ");
-        // while (!((input >= '0' && input <= '9') ||
-        //          (input >= 'a' && input <= 'f') ||
-        //          (input >= 'A' && input <= 'F'))) {
-        //     input = pc.getc();
-        //     pc.printf("%c\n\r", input);
-        // }
+        pc.printf("Expected value of rotary knob in hex (0-F): ");
+        while (!((input >= '0' && input <= '9') ||
+                 (input >= 'a' && input <= 'f') ||
+                 (input >= 'A' && input <= 'F'))) {
+            input = pc.getc();
+            pc.printf("%c\n\r", input);
+        }
 
         returnedVal = test_rotaryKnob(io_expander);
         if (input >= '0' && input <= '9')
