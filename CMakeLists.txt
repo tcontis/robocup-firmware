@@ -18,8 +18,8 @@ if ( APPLE )
 endif ()
 
 # Google test
-enable_testing()
-include(SetupGTest)
+# enable_testing()
+# include(SetupGTest)
 
 # C++ version
 if ("${CMAKE_VERSION}" LESS "3.1")
@@ -51,7 +51,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=return-type -Werror=delete-non-v
 
 # Google Protobuf
 find_package(Protobuf REQUIRED)
-include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIR})
+include_directories(${PROTOBUF_INCLUDE_DIR})
 
 # Eigen - used for linear algebra
 find_package(Eigen3 REQUIRED)
@@ -102,6 +102,8 @@ endif()
 set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -fexceptions")
 # the mbed libraries are compiled with -fno-rtti, so we need to as well
 set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -fno-rtti")
+# Required to compile protobuf with no-rtti
+set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -DGOOGLE_PROTOBUF_NO_RTTI")
 # enable C++14
 set(MBED_CMAKE_CXX_FLAGS "${MBED_CMAKE_CXX_FLAGS} -std=c++14")
 # Enable logging for the firm-lib library
@@ -126,16 +128,19 @@ set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
 # TODO: probably move this to lib cmake
 # Several things depend on the headers in the 'common' directory
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/common") # for headers in common/
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/lib/common") # for generated protobuf headers
+# include_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/common") # for headers in common/
+# include_directories("${CMAKE_CURRENT_BINARY_DIR}/lib/common") # for generated protobuf headers
+include_directories("${PROJECT_SOURCE_DIR}/lib/common") # for headers in common/
+include_directories("${PROJECT_BINARY_DIR}/lib/common") # for generated protobuf headers
+include_directories("${CMAKE_BINARY_DIR}/lib/common") # for generated protobuf headers
 
 add_subdirectory(lib/common)
 
 # Add a test runner target "test-firmware"
 file(GLOB FIRMWARE_TEST_SRC "lib/test/*.cpp")
 add_executable(test-firmware ${FIRMWARE_TEST_SRC})
-add_dependencies(test-firmware googletest)
-target_link_libraries(test-firmware ${GTEST_LIBRARIES})
+# add_dependencies(test-firmware googletest)
+# target_link_libraries(test-firmware ${GTEST_LIBRARIES})
 
 target_include_directories(test-firmware PRIVATE "lib" "lib/test" "lib/utils/include" "lib/modules/include")
 target_compile_definitions(test-firmware PRIVATE -D__MBED_TEST__)

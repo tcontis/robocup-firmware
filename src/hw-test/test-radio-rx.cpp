@@ -62,7 +62,7 @@ int main() {
 
     if (initRadio()) {
         CommModule::Instance->setRxHandler(&radioPingHandler, rtp::PING);
-        CommModule::Instance->setTxHandler(dynamic_cast<CommLink*>(globalRadio.get()), &CommLink::sendPacket, rtp::PING);
+        CommModule::Instance->setTxHandler(dynamic_cast<CommLink*>(globalRadio.get()), &CommLink::sendPacket);
     } else {
         LOG(SEVERE, "No radio interface found!");
     }

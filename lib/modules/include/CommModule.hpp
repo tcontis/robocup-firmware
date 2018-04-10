@@ -39,7 +39,7 @@ public:
     void setRxHandler(RxCallbackT callback, rtp::MessageType portNbr);
 
     /// Assign a TX callback function to a port
-    void setTxHandler(TxCallbackT callback, rtp::MessageType portNbr);
+    void setTxHandler(TxCallbackT callback, uint8_t portNbr = 0);
 
     /// Assign an RX callback method to a port
     template <typename B>
@@ -50,18 +50,19 @@ public:
     /// Assign an TX callback method to a port
     template <typename B>
     void setTxHandler(B* obj, int32_t (B::*mptr)(const rtp::Packet*),
-                      rtp::MessageType portNbr) {
+                      uint8_t portNbr = 0) {
         setTxHandler(std::bind(mptr, obj, std::placeholders::_1), portNbr);
     }
 
     /// Send an rtp::Packet over previsouly initialized hardware
-    void send(rtp::Packet pkt);
+    void send(rtp::Packet pkt, uint8_t portNbr = 0);
 
     /// Called by CommLink instances whenever a packet is received via radio
     void receive(rtp::Packet pkt);
 
     /// Close a port that was previouly assigned callback functions/methods
-    void close(rtp::MessageType portNbr) noexcept;
+    void closeRx(rtp::MessageType portNbr) noexcept;
+    void closeTx(uint8_t portNbr = 0) noexcept;
 
 #ifndef NDEBUG
     /// Retuns the number of ports with a binded callback function/method
@@ -81,5 +82,11 @@ public:
 #endif
 
 private:
-    std::map<rtp::MessageType, PortT> m_ports;
+    // std::map<rtp::MessageType, PortT> m_ports;
+
+    std::map<rtp::MessageType, RxCallbackT> m_rxCallbacks;
+    std::map<uint8_t, TxCallbackT> m_txCallbacks;
+
+    std::map<rtp::MessageType, unsigned int> m_rxCount;
+    std::map<uint8_t, unsigned int> m_txCount;
 };

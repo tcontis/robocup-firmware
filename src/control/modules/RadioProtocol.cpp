@@ -36,13 +36,7 @@ void RadioProtocol::start() {
                                rtp::MessageType::DEBUG_REQUEST);
     // m_commModule->setRxHandler(this, &RadioProtocol::rxFile,
     //                           rtp::MessageType::FILE);
-    m_commModule->setTxHandler(m_radio.get(), &CommLink::sendPacket,
-                               rtp::MessageType::ROBOT_STATUS);
-    m_commModule->setTxHandler(m_radio.get(), &CommLink::sendPacket,
-                               rtp::MessageType::DEBUG_RESPONSE);
-    m_commModule->setTxHandler(m_radio.get(), &CommLink::sendPacket,
-                              rtp::MessageType::PKT_ACK);
-
+    m_commModule->setTxHandler(m_radio.get(), &CommLink::sendPacket);
     LOG(INFO, "Radio protocol listening for type %d",
         rtp::MessageType::CONTROL);
 
@@ -54,7 +48,8 @@ void RadioProtocol::start() {
 }
 
 void RadioProtocol::stop() {
-    m_commModule->close(rtp::MessageType::CONTROL);
+    m_commModule->closeRx(rtp::MessageType::CONTROL);
+    m_commModule->closeTx();
 
     m_robotStatusTimer.stop();
     m_radioTimeoutTimer.stop();
