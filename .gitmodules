@@ -13,3 +13,6 @@
 [submodule "lib/robocup-fshare"]
 	path = lib/robocup-fshare
 	url = https://github.com/robojackets/robocup-fshare
+[submodule "external/nanopb"]
+	path = external/nanopb
+	url = https://github.com/nanopb/nanopb

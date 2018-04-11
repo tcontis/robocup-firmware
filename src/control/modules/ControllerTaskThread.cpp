@@ -208,7 +208,7 @@ void Task_Controller(const void* args) {
         }
 
         // limit duty cycle values, while keeping sign (+ or -)
-        for (auto dc : duty_cycles) {
+        for (auto& dc : duty_cycles) {
             if (std::abs(dc) > FPGA::MAX_DUTY_CYCLE) {
                 dc = copysign(FPGA::MAX_DUTY_CYCLE, dc);
             }

@@ -33,9 +33,15 @@ add_dependencies(rc-fshare mbed_libraries)
 #     DEPENDS                 ${MBED_ASSEC_LIBS_DEPENDS}
 # )
 
+# Generage protobuf files using Nanopb
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../external/nanopb/extra")
+find_package(Nanopb REQUIRED)
+nanopb_generate_cpp(PROTO_SRCS PROTO_HDRS "${CMAKE_CURRENT_SOURCE_DIR}/robocup-fshare/protobuf/Packet.proto")
+set_source_files_properties(${PROTO_SRCS} ${PROTO_HDRS} PROPERTIES GENERATED TRUE)
+
 # build the 'firm-lib' library that contains all the MBED stuff needed for
 # both the base station and robot firmware
-add_library(firm-lib ${firm-lib_SRC})
+add_library(firm-lib ${firm-lib_SRC} ${PROTO_SRCS})
 target_link_libraries(firm-lib rc-fshare)
 
 target_include_directories( firm-lib PUBLIC
@@ -59,6 +65,7 @@ target_include_directories( firm-lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${MBED_ASSEC_LIBS_INCLUDES}
+    ${NANOPB_INCLUDE_DIRS}
 )
 
 target_include_directories(firm-lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
