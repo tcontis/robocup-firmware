@@ -104,16 +104,22 @@ public:
         m_timeoutTimer.start(TIMEOUT_INTERVAL);
 
         // TODO: this is bad and lazy
-        if (controlMessage) {
-            m_replyTimer.start(1 + SLOT_DELAY * slot);
-        } else {
-            m_replyTimer.start(1 + SLOT_DELAY * (m_uid % 6));
-        }
+        static bool send = m_uid & 0x1;
+        if (send) {
+            if (controlMessage) {
+                m_replyTimer.start(1 + SLOT_DELAY * slot);
+            } else {
+                m_replyTimer.start(1 + SLOT_DELAY * (m_uid % 6));
+            }
 
-        if (rxCallback) {
-            m_reply = rxCallback(controlMessage, controlMessage != nullptr);
+            if (rxCallback) {
+                m_reply = rxCallback(controlMessage, controlMessage != nullptr);
+            } else {
+                LOG(WARN, "no callback set");
+            }
+            send = false;
         } else {
-            LOG(WARN, "no callback set");
+            send = true;
         }
     }
 
