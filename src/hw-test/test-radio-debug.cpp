@@ -29,8 +29,11 @@ bool initRadio() {
 }
 
 int recv = 0;
-void radioRxHandler(rtp::SubPacket pkt) {
+void radioRxHandler(rtp::SubPacket subPkt) {
     LOG(DEBUG, "radioRxHandler()");
+    const rtp::DebugResponseMessage* msg =
+        reinterpret_cast<const rtp::DebugResponseMessage*>(subPkt.payload.data());
+    LOG(INFO, "Debug: %d: [%f, %f, %f, %f, %f]", msg->debugType, msg->values[0], msg->values[1], msg->values[2], msg->values[3], msg->values[4]);
     recv++;
 }
 
@@ -46,15 +49,15 @@ int main() {
     LOG(INFO, "Radio transmit test starting");
 
     if (initRadio()) {
-        CommModule::Instance->setRxHandler(&radioRxHandler, rtp::PING);
-        CommModule::Instance->setTxHandler(dynamic_cast<CommLink*>(globalRadio.get()), &CommLink::sendPacket, rtp::PING);
+        CommModule::Instance->setRxHandler(&radioRxHandler, rtp::DEBUG_RESPONSE);
+        CommModule::Instance->setTxHandler(dynamic_cast<CommLink*>(globalRadio.get()), &CommLink::sendPacket, rtp::DEBUG_REQUEST);
 
     } else {
         LOG(SEVERE, "No radio interface found!");
     }
 
     // static_cast<Decawave*>(globalRadio.get())->setAddress(rtp::ROBOT_PAN, 0x0001);
-    globalRadio->setAddress(1);
+    globalRadio->setAddress(0x0000, rtp::BASE_PAN);
 
     DigitalOut radioStatusLed(LED4, globalRadio->isConnected());
 
@@ -63,20 +66,23 @@ int main() {
     while (true) {
         // construct packet from buffer received over USB
         rtp::Packet pkt;
-        pkt.macInfo.destAddr = 0x0002;
+        pkt.macInfo.destAddr = rtp::BROADCAST_ADDR;
         pkt.macInfo.ackRequest = 1;
         pkt.macInfo.seqNum = sent;
         pkt.empty = false;
         rtp::SubPacket subPacket;
-        subPacket.header.type = rtp::MessageType::PING;
+        subPacket.header.type = rtp::MessageType::DEBUG_REQUEST;
         subPacket.empty = false;
+        rtp::DebugRequestMessage message;
+        message.debugType = rtp::TEST;
+        rtp::serializeToVector(message, &subPacket.payload);
         pkt.subPackets.push_back(subPacket);
         CommModule::Instance->send(std::move(pkt));
 
         sent++;
         // printf("Sent: %d\r\n", sent);
-        printf("Sent: %d, Recv: %d\r\n\033[1A", sent, recv);
+        // printf("Sent: %d, Recv: %d\r\n\033[1A", sent, recv);
         // if (sent>500) break;
-        Thread::wait(20);
+        Thread::wait(200);
     }
 }

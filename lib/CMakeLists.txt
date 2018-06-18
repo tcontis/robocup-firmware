@@ -45,7 +45,6 @@ target_include_directories( firm-lib PUBLIC
     drivers/avr-isp
     drivers/ball-sense
     drivers/buzzer
-    drivers/cc1201
     drivers/decawave
     drivers/ds2411
     drivers/fpga
@@ -62,24 +61,6 @@ target_include_directories( firm-lib PUBLIC
     ${MBED_ASSEC_LIBS_INCLUDES}
 )
 
-# CC1201 Register settings
-# Automatically generate a C header with the register values from a chosen smartrf xml file
-if(DEFINED ENV{CC1201_CONFIG_NAME})
-    set(CC1201_CONFIG_NAME $ENV{CC1201_CONFIG_NAME})
-else()
-    set(CC1201_CONFIG_NAME cc1101-compatible)
-endif()
-set(CC1201_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/drivers/cc1201/cfg/${CC1201_CONFIG_NAME}.xml)
-add_custom_target(cc1201_register_export
-    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/cc1201/cfg/smartrf_exporter.py
-        ${CC1201_CONFIG}
-        ${CMAKE_CURRENT_BINARY_DIR}/cc1201_register_export.h
-    DEPENDS ${CC1201_CONFIG}
-    COMMENT "Generating C header file for cc1201 registers from '${CC1201_CONFIG_NAME}' smartrf xml file"
-)
-set_target_properties(cc1201_register_export PROPERTIES EXCLUDE_FROM_ALL TRUE)
-
-add_dependencies(firm-lib cc1201_register_export)
 target_include_directories(firm-lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 # depends on the mbed libraries and all of the accessory libraries
 add_dependencies(firm-lib mbed_libraries ${MBED_ASSEC_LIBS_DEPENDS})

@@ -29,7 +29,7 @@ bool initRadio() {
 }
 
 int recv = 0;
-void radioRxHandler(rtp::SubPacket pkt) {
+void radioRxHandler(rtp::Packet pkt) {
     LOG(DEBUG, "radioRxHandler()");
     recv++;
 }
@@ -43,18 +43,18 @@ int main() {
     rjLogLevel = INFO;
 
     printf("****************************************\r\n");
-    LOG(INFO, "Radio transmit test starting");
+    LOG(INFO, "Radio base test starting");
 
     if (initRadio()) {
-        CommModule::Instance->setRxHandler(&radioRxHandler, rtp::PING);
-        CommModule::Instance->setTxHandler(dynamic_cast<CommLink*>(globalRadio.get()), &CommLink::sendPacket, rtp::PING);
+        CommModule::Instance->setRxHandler(&radioRxHandler, rtp::ROBOT_STATUS);
+        CommModule::Instance->setTxHandler(dynamic_cast<CommLink*>(globalRadio.get()), &CommLink::sendPacket, rtp::CONTROL);
 
     } else {
         LOG(SEVERE, "No radio interface found!");
     }
 
     // static_cast<Decawave*>(globalRadio.get())->setAddress(rtp::ROBOT_PAN, 0x0001);
-    globalRadio->setAddress(1);
+    globalRadio->setAddress(0, rtp::BASE_PAN);
 
     DigitalOut radioStatusLed(LED4, globalRadio->isConnected());
 
@@ -63,20 +63,33 @@ int main() {
     while (true) {
         // construct packet from buffer received over USB
         rtp::Packet pkt;
-        pkt.macInfo.destAddr = 0x0002;
-        pkt.macInfo.ackRequest = 1;
+        pkt.macInfo.destAddr = 0xFF01;
+        pkt.macInfo.destPAN = rtp::ROBOT_PAN;
+        pkt.macInfo.ackRequest = 0;
         pkt.macInfo.seqNum = sent;
+        pkt.header.type = rtp::MessageType::CONTROL;
         pkt.empty = false;
-        rtp::SubPacket subPacket;
-        subPacket.header.type = rtp::MessageType::PING;
-        subPacket.empty = false;
-        pkt.subPackets.push_back(subPacket);
+
+        rtp::ControlMessage message;
+        message.bodyX = 0;
+        message.bodyY = 0;
+        message.bodyW = 0;
+        message.dribbler = 0;
+        message.kickStrength = 0;
+        message.shootMode = 0;
+        message.triggerMode = 0;
+
+        vector<uint8_t> payload;
+        rtp::serializeToVector(message, &payload);
+
+        pkt.payload = std::move(payload);
+
         CommModule::Instance->send(std::move(pkt));
 
         sent++;
         // printf("Sent: %d\r\n", sent);
         printf("Sent: %d, Recv: %d\r\n\033[1A", sent, recv);
-        // if (sent>500) break;
-        Thread::wait(20);
+        if (sent>500) break;
+        Thread::wait(16);
     }
 }

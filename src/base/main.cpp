@@ -2,7 +2,6 @@
 #include <memory>
 #include "Mbed.hpp"
 
-#include "CC1201Radio.hpp"
 #include "Decawave.hpp"
 #include "Logger.hpp"
 #include "Logger.hpp"

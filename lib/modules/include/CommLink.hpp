@@ -10,7 +10,7 @@
 #include <memory>
 
 /// CommLink error levels
-enum { COMM_SUCCESS, COMM_FAILURE, COMM_DEV_BUF_ERR, COMM_NO_DATA };
+enum CommStatus : int32_t { COMM_SUCCESS, COMM_FAILURE, COMM_DEV_BUF_ERR, COMM_NO_DATA };
 
 /**
  * CommLink Class used as the hal (hardware abstraction layer) module for
@@ -23,20 +23,11 @@ public:
     using BufferPtrT = BufferT*;
     using ConstBufferPtrT = const BufferT*;
 
-    // Class constants for data queues
-    static constexpr size_t RX_QUEUE_SIZE = 2;
-
     /// Constructor
     CommLink(SpiPtrT spiBus, PinName nCs = NC, PinName intPin = NC);
 
     /// Kills any threads and frees the allocated stack.
     virtual ~CommLink() = default;
-
-    // CommLink(const CommLink&) = default;
-    // CommLink& operator=(const CommLink&) = default;
-    //
-    // CommLink(CommLink&&) = default;
-    // CommLink& operator=(CommLink&&) = default;
 
     // The pure virtual methods for making CommLink an abstract class
     /// Perform a soft reset for a communication link's hardware device
@@ -52,34 +43,26 @@ public:
     virtual int32_t sendPacket(const rtp::Packet* pkt) = 0;
 
     /// Set the MAC layer filtering address for the link
-    virtual void setAddress(int addr) { m_address = addr; }
+    virtual void setAddress(int addr, int pan = rtp::BROADCAST_PAN) {
+        m_address = addr;
+        m_pan = pan;
+    }
 
 protected:
     static constexpr size_t SIGNAL_START = (1 << 1);
-    static constexpr size_t SIGNAL_RX = (1 << 1);
+    static constexpr size_t SIGNAL_RX = (1 << 2);
 
     int m_address = rtp::INVALID_ROBOT_UID;
+    int m_pan = rtp::BROADCAST_PAN;
     InterruptIn m_intIn;
 
-    /**
-     * @brief Read data from the radio's RX buffer
-     *
-     * @param buf The buffer to write data into
-     *
-     * @return A vector of received bytes returned with std::move
-     */
-    virtual BufferT getData() = 0;
+    virtual rtp::Packet getData() = 0;
 
     /// Interrupt Service Routine
     void ISR() { m_rxThread.signal_set(SIGNAL_RX); }
 
     /// Called by the derived class to begin thread operations
     void ready() { m_rxThread.signal_set(SIGNAL_START); }
-
-    template <typename T>
-    constexpr static T twos_compliment(T val) {
-        return ~val + 1;
-    }
 
 private:
     Thread m_rxThread;
@@ -94,4 +77,4 @@ private:
     }
 };
 
-extern std::unique_ptr<CommLink> globalRadio;
+extern std::shared_ptr<CommLink> globalRadio;

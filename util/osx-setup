@@ -30,7 +30,8 @@ echo "-- Installing python packages"
 pip2 install colorama
 pip2 install jinja2
 pip2 install pyserial
-pip2 install mbed-ls 
+pip2 install mbed-ls
+pip2 install --pre -U pyocd
 pip3 install stylize
 
 

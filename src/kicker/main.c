@@ -147,7 +147,7 @@ void main() {
         // fairly close
         if (last_voltage_ > 239 || !charge_allowed_ || !charge_commanded_) {
             PORTB &= ~(_BV(CHARGE_PIN));
-        } else if (last_voltage_ < 232 && charge_allowed_ &&
+        } else if (last_voltage_ < 150 && charge_allowed_ &&
                    charge_commanded_) {
             PORTB |= _BV(CHARGE_PIN);
         }

@@ -52,14 +52,10 @@ void Task_SerialConsole(const void* args) {
 
         // If there is a new command to handle, parse and process it
         if (Console::Instance->CommandReady() == true) {
-// Increase the thread's priority first so we can make sure the
-// scheduler will select it to run
-#ifndef NDEBUG
-            auto tState = osThreadSetPriority(threadID, osPriorityAboveNormal);
+            // Increase the thread's priority first so we can make sure the
+            // scheduler will select it to run
+            [[gnu::unused]] auto tState = osThreadSetPriority(threadID, osPriorityAboveNormal);
             ASSERT(tState == osOK);
-#else
-            osThreadSetPriority(threadID, osPriorityAboveNormal);
-#endif
 
             // Execute the command
             const auto rxLen = Console::Instance->rxBuffer().size() + 1;
@@ -77,13 +73,9 @@ void Task_SerialConsole(const void* args) {
                 Console::Instance->pc.getc();
             Console::Instance->attachInputHandler();
 
-// Now, reset the priority of the thread to its idle state
-#ifndef NDEBUG
+            // Now, reset the priority of the thread to its idle state
             tState = osThreadSetPriority(threadID, threadPriority);
             ASSERT(tState == osOK);
-#else
-            osThreadSetPriority(threadID, threadPriority);
-#endif
 
             Console::Instance->CommandHandled();
         }

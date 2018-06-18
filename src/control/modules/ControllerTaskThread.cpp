@@ -20,6 +20,9 @@
 // #include <Eigen/DisableStupidWarnings.h>
 #include <Eigen/Dense>
 
+#include "RadioProtocol.hpp"
+using namespace std;
+
 // Keep this pretty high for now. Ideally, drop it down to ~3 for production
 // builds. Hopefully that'll be possible without the console
 constexpr auto CONTROL_LOOP_WAIT_MS = 5;
@@ -191,6 +194,18 @@ void Task_Controller(const void* args) {
         // motors.
         std::array<int16_t, 4> driveMotorDutyCycles = pidController.run(
             driveMotorEnc, dt, &errors, &wheelVelsOut, &targetWheelVelsOut);
+
+        // Populate debug information
+        for (auto i = 0; i < 4; i++) {
+            RadioProtocol::Instance->updateDebug(rtp::PID_ERROR, errors[i], i);
+            RadioProtocol::Instance->updateDebug(rtp::WHEEL_VEL, wheelVelsOut[i], i);
+            RadioProtocol::Instance->updateDebug(rtp::STALL_COUNTER, wheelStallDetection[i].stall_counter, i);
+            RadioProtocol::Instance->updateDebug(rtp::TARGET_WHEEL_VEL, targetWheelVelsOut[i], i);
+        }
+        for (auto i = 0; i < 5; i++) {
+            RadioProtocol::Instance->updateDebug(rtp::MOTOR_DUTY, duty_cycles[i], i);
+        }
+        RadioProtocol::Instance->updateDebug(rtp::TEST, 11, 0);
 
         // assign the duty cycles, zero out motors that the fpga returns an
         // error for

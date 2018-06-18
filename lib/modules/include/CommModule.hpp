@@ -26,7 +26,7 @@
 class CommModule {
 public:
     /// Type aliases
-    using RxCallbackSigT = void(rtp::Packet);
+    using RxCallbackSigT = void(rtp::SubPacket);
     using TxCallbackSigT = uint32_t(const rtp::Packet*);
     using RxCallbackT = std::function<RxCallbackSigT>;
     using TxCallbackT = std::function<TxCallbackSigT>;
@@ -35,25 +35,22 @@ public:
     /// Global singleton instance of CommModule
     static std::shared_ptr<CommModule> Instance;
 
-    /// The constructor initializes and starts threads and mail queues
-    CommModule();
-
     /// Assign an RX callback function to a port
-    void setRxHandler(RxCallbackT callback, uint8_t portNbr);
+    void setRxHandler(RxCallbackT callback, rtp::MessageType portNbr);
 
     /// Assign a TX callback function to a port
-    void setTxHandler(TxCallbackT callback, uint8_t portNbr);
+    void setTxHandler(TxCallbackT callback, rtp::MessageType portNbr);
 
     /// Assign an RX callback method to a port
     template <typename B>
-    void setRxHandler(B* obj, void (B::*mptr)(rtp::Packet), uint8_t portNbr) {
+    void setRxHandler(B* obj, void (B::*mptr)(rtp::SubPacket), rtp::MessageType portNbr) {
         setRxHandler(std::bind(mptr, obj, std::placeholders::_1), portNbr);
     }
 
     /// Assign an TX callback method to a port
     template <typename B>
     void setTxHandler(B* obj, int32_t (B::*mptr)(const rtp::Packet*),
-                      uint8_t portNbr) {
+                      rtp::MessageType portNbr) {
         setTxHandler(std::bind(mptr, obj, std::placeholders::_1), portNbr);
     }
 
@@ -64,10 +61,7 @@ public:
     void receive(rtp::Packet pkt);
 
     /// Close a port that was previouly assigned callback functions/methods
-    void close(unsigned int portNbr) noexcept;
-
-    /// Check if everything is ready for sending/receiving packets
-    inline bool isReady() const noexcept { return m_isReady && m_isRunning; }
+    void close(rtp::MessageType portNbr) noexcept;
 
 #ifndef NDEBUG
     /// Retuns the number of ports with a binded callback function/method
@@ -80,52 +74,12 @@ public:
     unsigned int numTxPackets() const;
 
     /// Resets the counts for send/received packets
-    void resetCount(unsigned int portNbr);
+    void resetCount(rtp::MessageType portNbr);
 
     /// Print debugging information
     void printInfo() const;
 #endif
 
-protected:
-    static constexpr size_t SIGNAL_START = (1 << 0);
-
-    osPoolId m_txPoolId;
-    osPoolId m_rxPoolId;
-
-    osMessageQId m_txMessageQueue;
-    osMessageQId m_rxMessageQueue;
-
 private:
-    // DEFAULT_STACK_SIZE defined in rtos library
-    static constexpr size_t STACK_SIZE = DEFAULT_STACK_SIZE / 2;
-
-    static constexpr osPriority RX_PRIORITY = osPriorityAboveNormal;
-    static constexpr osPriority TX_PRIORITY = osPriorityAboveNormal;
-
-    std::map<uint8_t, PortT> m_ports;
-
-    Thread m_rxThread;
-    Thread m_txThread;
-
-    osThreadId m_rxThreadId;
-    osThreadId m_txThreadId;
-
-    bool m_isReady{false};
-    bool m_isRunning{false};
-
-    void ready();
-    void txThread();
-    void rxThread();
-
-    // The threadHelper methods accept a CommModule pointer as a parameter
-    inline static void rxThreadHelper(const void* moduleInst) {
-        auto module = reinterpret_cast<CommModule*>(
-            const_cast<void*>(moduleInst));  // dangerous
-        module->rxThread();
-    }
-    inline static void txThreadHelper(const void* moduleInst) {
-        auto module = reinterpret_cast<CommModule*>(
-            const_cast<void*>(moduleInst));  // dangerous
-        module->txThread();
-    }
+    std::map<rtp::MessageType, PortT> m_ports;
 };
