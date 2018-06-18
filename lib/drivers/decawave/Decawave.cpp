@@ -74,6 +74,14 @@ Decawave::Decawave(SpiPtrT sharedSPI, PinName nCs, PinName intPin,
                    PinName _nReset)
     : CommLink(sharedSPI, nCs, intPin), dw1000_api(), nReset(_nReset) {
     reset();
+    if (m_isInit) {
+        LOG(INFO, "Decawave ready!");
+    } else {
+        LOG(SEVERE,
+            "Decawave part number error:\r\n"
+            "    Found:\t0x%02X (expected 0x%02X)",
+            m_chipVersion, DWT_DEVICE_ID);
+    }
 }
 
 // Virtual functions from CommLink
@@ -146,11 +154,6 @@ int32_t Decawave::selfTest() {
     m_chipVersion = dwt_readdevid();
 
     if (m_chipVersion != DWT_DEVICE_ID) {
-        LOG(SEVERE,
-            "Decawave part number error:\r\n"
-            "    Found:\t0x%02X (expected 0x%02X)",
-            m_chipVersion, DWT_DEVICE_ID);
-
         return -1;
     } else {
         m_isInit = true;
@@ -167,7 +170,7 @@ void Decawave::reset() {
     setSPIFrequency(2'000'000);
 
     if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
-        LOG(SEVERE, "Decawave not initialized");
+        // LOG(SEVERE, "Decawave not initialized");
         return;
     }
 
@@ -194,7 +197,6 @@ void Decawave::reset() {
         dwt_rxreset();
         // dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
-        LOG(INFO, "Decawave ready!");
         CommLink::ready();
     }
 }

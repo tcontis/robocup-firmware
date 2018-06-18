@@ -86,10 +86,10 @@ int dw1000_api::dwt_initialise(uint16 config)
     uint32_t chip_version = dwt_readdevid();
     if (DWT_DEVICE_ID != chip_version) // MP IC ONLY (i.e. DW1000) FOR THIS CODE
     {
-        LOG(SEVERE,
-            "Decawave part number error:\r\n"
-            "    Found:\t0x%02X (expected 0x%02X)",
-            chip_version, DWT_DEVICE_ID);
+        // LOG(SEVERE,
+        //     "Decawave part number error:\r\n"
+        //     "    Found:\t0x%02X (expected 0x%02X)",
+        //     chip_version, DWT_DEVICE_ID);
         return DWT_ERROR ;
     }
 
