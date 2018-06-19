@@ -122,9 +122,16 @@ void Task_Controller(const void* args) {
     const auto threadID = Thread::gettid();
     ASSERT(threadID != nullptr);
 
+
     // Store our priority so we know what to reset it to after running a command
     const auto threadPriority = osThreadGetPriority(threadID);
+
     (void)threadPriority;  // disable warning if unused
+
+    LOG(OK,
+        "Controller task thread ready!\r\n"
+        "    Thread ID: %u, Priority: %d",
+        reinterpret_cast<P_TCB>(threadID)->task_id, threadPriority);
 
     // signal back to main and wait until we're signaled to continue
     osSignalSet(mainID, MAIN_TASK_CONTINUE);
@@ -133,6 +140,7 @@ void Task_Controller(const void* args) {
     std::array<int16_t, 5> duty_cycles{};
 
     pidController.setPidValues(3.0, 10, 2, 30, 0);
+
 
     // initialize timeout timer
     commandTimeoutTimer = make_unique<RtosTimerHelper>(

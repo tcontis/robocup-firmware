@@ -299,7 +299,7 @@ int main() {
 
     // Start the thread task for the on-board control loop
     Thread controller_task(Task_Controller, mainID, osPriorityHigh,
-                           DEFAULT_STACK_SIZE / 2);
+                           DEFAULT_STACK_SIZE);
     Thread::signal_wait(MAIN_TASK_CONTINUE, osWaitForever);
 
 #ifndef NDEBUG

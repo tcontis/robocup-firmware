@@ -135,13 +135,14 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length,
                          uint8_t* data, uint16_t timeout) {
     char command[1];
     command[0] = regAddr;
-    char* redData = (char*)malloc(length);
+    // char* redData = (char*)malloc(length);
+    // original function malloc'd char* array, not doing this anymore
     i2c.write(devAddr << 1, command, 1, true);
-    i2c.read(devAddr << 1, redData, length);
-    for (int i = 0; i < length; i++) {
-        data[i] = redData[i];
-    }
-    free(redData);
+    i2c.read(devAddr << 1, reinterpret_cast<char*>(data), length);
+    // for (int i = 0; i < length; i++) {
+        // data[i] = redData[i];
+    // }
+    // free(redData);
     return length;
 }
 
