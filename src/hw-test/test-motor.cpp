@@ -3,7 +3,7 @@
 #include "Logger.hpp"
 
 #include "RotarySelector.hpp"
-#include "fpga.hpp"
+#include "FPGA.hpp"
 #include "io-expander.hpp"
 #include "RobotDevices.hpp"
 
