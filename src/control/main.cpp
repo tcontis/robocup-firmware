@@ -304,8 +304,8 @@ int main() {
 
 #ifndef NDEBUG
 // Start the thread task for the serial console
-// Thread console_task(Task_SerialConsole, mainID, osPriorityBelowNormal);
-// Thread::signal_wait(MAIN_TASK_CONTINUE, osWaitForever);
+Thread console_task(Task_SerialConsole, mainID, osPriorityBelowNormal);
+Thread::signal_wait(MAIN_TASK_CONTINUE, osWaitForever);
 #endif
 
     // Initialize CommModule and radio
@@ -427,7 +427,7 @@ int main() {
     // Release each thread into its operations in a structured manner
     controller_task.signal_set(SUB_TASK_CONTINUE);
 #ifndef NDEBUG
-// console_task.signal_set(SUB_TASK_CONTINUE);
+    console_task.signal_set(SUB_TASK_CONTINUE);
 #endif
 
 // #pragma for gcc has bugs in it for selectively disabling warnings
