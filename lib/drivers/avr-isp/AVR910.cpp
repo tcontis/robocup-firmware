@@ -43,6 +43,7 @@ AVR910::AVR910(shared_ptr<SharedSPI> spi, PinName nCs, PinName nReset)
 
     // Enter serial programming mode by pulling reset line low.
     nReset_ = 0;
+    //chipSelect();
 
     // Wait 20ms before issuing first command.
     Thread::wait(20);
@@ -50,16 +51,25 @@ AVR910::AVR910(shared_ptr<SharedSPI> spi, PinName nCs, PinName nReset)
     // Enable programming mode on the chip
     // It's possible for it to fail, so try it a few times.
     bool enabled = false;
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 20; i++) {
         enabled = enableProgramming();
         if (enabled) break;
 
-        // Give nReset a positive pulse.
+	// apparently the SPI calls in enableProgramming are async in the
+	// hardware. We need to wait at least a half ms before toggling
+	// nReset or the pulse will be asserted while SPI clk is high, which
+	// in violation of the datasheet requirements
+	Thread::wait(1); // wait 5ms
+
+        // Give nReset a positive pulse, which should place the AT in serial
+	// flash mode
         nReset_ = 1;
-        Thread::wait(20);
+        Thread::wait(21);
         nReset_ = 0;
-        Thread::wait(20);
+        Thread::wait(21);
     }
+
+    //chipDeselect();
 
     if (!enabled) {
         printf(
@@ -158,8 +168,9 @@ bool AVR910::enableProgramming() {
     chipSelect();
     m_spi->write(0xAC);
     m_spi->write(0x53);
-    int response = m_spi->write(0x00);
+    int response = m_spi->write(0x33);
     m_spi->write(0x00);
+    Thread::wait(1);
     chipDeselect();
 
     if (response == 0x53) {
