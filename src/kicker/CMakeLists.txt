@@ -3,7 +3,17 @@
 set(CMAKE_TOOLCHAIN_FILE attiny_toolchain.cmake)
 include(attiny_toolchain.cmake)
 
-include_directories(${PROJECT_SOURCE_DIR}/lib/drivers/kicker-board)
+set(KICKER_VERSION "v3.0")
+
+include_directories(kicker_elf PRIVATE
+#	${PROJECT_SOURCE_DIR}/lib/drivers/kicker-board
+	include
+	include/hal
+	include/hal/${AVR_TARGET_ARCH}
+	include/hal/${AVR_TARGET_ARCH}/${KICKER_VERSION}
+	hal/${AVR_TARGET_ARCH}
+	hal/${AVR_TARGET_ARCH}/${KICKER_VERSION}
+)
 
 set(CMAKE_C_COMPILER    ${AVR_C_COMPILER})
 set(CMAKE_CXX_COMPILER  ${AVR_CXX_COMPILER})
@@ -15,11 +25,36 @@ set(CMAKE_CXX_COMPILER  ${AVR_CXX_COMPILER})
 # The -O2 turns on optimizations, which are required to use the delay_*() functions
 list(APPEND CMAKE_C_FLAGS "-std=c11 -O2 -mmcu=${AVR_TARGET_ARCH} -DF_CPU=8000000")
 
+# Select headers
+
 # Select the C source files
 file(GLOB kicker_SRC "*.c")
+file(GLOB hal_arch "hal/${AVR_TARGET_ARCH}/*.c")
+file(GLOB hal_arch_v "hal/${AVR_TARGET_ARCH}/${KICKER_VERSION}/*.c")
+
+# Select header files
+file(GLOB inc "include/*.h")
+file(GLOB inc_hal "include/hal/*.h")
+file(GLOB inc_hal_arch "include/hal/${AVR_TARGET_ARCH}/*.h")
+file(GLOB inc_hal_arch_v "include/hal/${AVR_TARGET_ARCH}/${KICKER_VERSION}/*.h")
+
+set(all_kicker_src)
+list(APPEND all_kicker_src ${kicker_SRC})
+list(APPEND all_kicker_src ${hal_arch})
+list(APPEND all_kicker_src ${hal_arch_v})
+list(APPEND all_kicker_src ${inc})
+list(APPEND all_kicker_src ${inc_hal})
+list(APPEND all_kicker_src ${inc_hal_arch})
+list(APPEND all_kicker_src ${inc_hal_arch_v})
+
+message(${all_kicker_src})
+add_executable(kicker_elf ${all_kicker_src})
+target_sources(kicker_elf PUBLIC ${all_kicker_src})
 
 # compile executable for kicker firmware
-add_executable(kicker_elf ${kicker_SRC})
+#add_executable(kicker_elf ${kicker_SRC} ${hal_arch} ${hal_arch_v})
+#add_executable(kicker_elf)
+#target_soruces(${kicker_elf} ${hal_arch} ${hal_arch_v} ${kicker_SRC})
 
 # only build kicker firmware if specifically instructed
 set_target_properties(kicker_elf PROPERTIES EXCLUDE_FROM_ALL TRUE)

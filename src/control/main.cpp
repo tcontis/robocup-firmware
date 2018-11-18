@@ -205,7 +205,8 @@ int main() {
     KickerBoard::Instance =
         std::make_shared<KickerBoard>(spiBus, RJ_KICKER_nCS, RJ_KICKER_nRESET,
                                       RJ_BALL_LED, "/local/rj-kickr.nib");
-    KickerBoard::Instance->flash(false, false);
+    //const auto kickerInitialized = 
+    KickerBoard::Instance->flash(false, true);
 
     KickerBoard::Instance->start();
 

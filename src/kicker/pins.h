@@ -39,7 +39,6 @@
 #define SW_KICK		(PC2)
 #define SW_CHIP		(PC3)
 
-
 /* Inputs */
 #define N_KICK_CS_PIN (PA6)
 #define KICK_MOSI_PIN (PA4)
