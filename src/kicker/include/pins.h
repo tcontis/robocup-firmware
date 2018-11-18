@@ -22,7 +22,7 @@
 #define MCU_MODE	(PD5)
 #define MCU_ERR		(PD6)
 
-#define BB_ACTIVE	(PB7)
+#define BB_ACTIVE	(PD7)
 
 #define HV_IND_MIN	(PA1)
 #define HV_IND_LOW	(PA2)
@@ -39,24 +39,6 @@
 #define SW_KICK		(PC2)
 #define SW_CHIP		(PC3)
 
-/* Inputs */
-#define N_KICK_CS_PIN (PA6)
-#define KICK_MOSI_PIN (PA4)
-#define V_MONITOR_PIN (PA0)
-
-#define DB_KICK_PIN (PA3)
-#define DB_CHG_PIN (PA1)
-/* Outputs */
-#define CHARGE_PIN (PB2)
-// #define CHIP_PIN (PORT)
-#define KICK_PIN (PB1)
-#define BALL_SENSE_TX (PB4)
-#define BALL_SENSE_RX (PB3)
-#define DB_SWITCH (PB5)
-
-/* Tri-State */
-#define KICK_MISO_PIN (PA2)
-
-/* Interrupts for PCMASK0 or PCMASK1 */
-#define INT_DB_KICK (PCINT3)
-#define INT_DB_CHG (PCINT1)
+// Chip and Kick
+#define KICK		(PC4)
+#define CHIP		(PC5)
