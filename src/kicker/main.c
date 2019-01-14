@@ -3,10 +3,14 @@
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include <util/delay.h>
 
+#include "kicker_config.h"
 #include "kicker_commands.h"
 #include "pins.h"
+#include "util.h"
 
 // kicker parameters
 #define MAX_KICK_STRENGTH 255.0f
@@ -67,6 +71,8 @@ volatile bool charge_allowed_ = true;
 volatile bool kick_on_breakbeam_ = false;
 volatile uint8_t kick_on_breakbeam_strength_ = 0;
 
+volatile bool _in_debug_mode = false;
+
 unsigned ball_sense_change_count_ = 0;
 
 uint32_t time = 0;
@@ -105,7 +111,7 @@ void kick(uint8_t strength) {
     timer_cnts_left_ = (int)(time_cnt_flt + 0.5f);  // round
 
     // start timer to enable the kick FSM processing interrupt
-    TCCR0B |= _BV(CS01);
+    TCCR0 |= _BV(CS01);
 }
 
 void init();
@@ -131,6 +137,22 @@ void main() {
 
     // We handle voltage readings here
     while (true) {
+        if (_in_debug_mode) {
+            PORTD |= _BV(MCU_YELLOW);
+
+            char kick_db_pressed = !(PINC & _BV(DB_KICK_PIN));
+            char charge_db_pressed = !(PINC & _BV(DB_CHG_PIN));
+
+            if (!kick_db_down_ && kick_db_pressed)
+                kick(255);
+            
+            if (!charge_db_down_ && charge_db_pressed)
+                charge_commanded_ = !charge_commanded_;
+
+            kick_db_down_ = kick_db_pressed;
+            charge_db_down_ = charge_db_pressed;
+        }
+
         // get a voltage reading by weighing in a new reading, same concept as
         // TCP RTT estimates (exponentially weighted sum)
 
@@ -139,24 +161,30 @@ void main() {
             int voltage_accum =
                 (255 - kalpha) * last_voltage_ + kalpha * get_voltage();
             last_voltage_ = voltage_accum / 255;
+
+            int num_lights = ((int) last_voltage_ / 45);
+            
+            PORTA &= ~(0x1F << 1);
+            PORTA |= ((0xFF >> abs(num_lights - sizeof(unsigned char))) << 1);
         }
         time++;
 
         // if we dropped below acceptable voltage, then this will catch it
         // note: these aren't true voltages, just ADC output, but it matches
         // fairly close
-        if (last_voltage_ > 239 || !charge_allowed_ || !charge_commanded_) {
-            PORTB &= ~(_BV(CHARGE_PIN));
+        
+        if (!(PIND & _BV(LT_DONE_N)) || last_voltage_ > 239 || !charge_allowed_ || !charge_commanded_) {
+            PORTD &= ~(_BV(LT_CHARGE));
         } else if (last_voltage_ < 232 && charge_allowed_ &&
                    charge_commanded_) {
-            PORTB |= _BV(CHARGE_PIN);
+            PORTD |= _BV(LT_CHARGE);
         }
 
-        if (PINA & _BV(N_KICK_CS_PIN)) {
+        if (PINB & _BV(N_KICK_CS_PIN)) {
             byte_cnt = 0;
         }
 
-        bool bs = PINB & _BV(BALL_SENSE_RX);
+        bool bs = PINA & _BV(BALL_SENSE_RX);
         if (ball_sensed_) {
             if (!bs)
                 ball_sense_change_count_++;  // wrong reading, inc counter
@@ -192,40 +220,75 @@ void init() {
 
     // disable watchdog
     wdt_reset();
-    MCUSR &= ~(_BV(WDRF));
-    WDTCR |= (_BV(WDCE)) | (_BV(WDE));
+    WDTCR |= (_BV(WDTOE) | _BV(WDE));
     WDTCR = 0x00;
 
-    // change our clock speed from 1 Mhz to 8 Mhz (there's a default CLKDIV8)
-    // 1. write the Clock Prescaler Change Enable (CLKPCE) bit to one and all
-    //    other bits in CLKPR to zero.
-    // 2. within four cycles, write the desired value to CLKPS while writing a
-    //    zero to CLKPCE.
-    CLKPR = _BV(CLKPCE);
-    CLKPR = 0;  // corresponds to CLKDIV1 prescale, also keeps CLKPCE low
+    // config status LEDs and set ERR/WARN until init done
+    DDRD |= _BV(MCU_GREEN);
+    DDRD |= _BV(MCU_YELLOW);
+    DDRD |= _BV(MCU_RED);
 
-    // configure output pins
-    DDRA |= _BV(KICK_MISO_PIN);
-    DDRB |= _BV(KICK_PIN) | _BV(CHARGE_PIN) | _BV(BALL_SENSE_TX);
+    PORTD |= _BV(MCU_YELLOW);
+    PORTD |= _BV(MCU_RED);
 
-    // enable ball sense LED
-    PORTB |= _BV(BALL_SENSE_TX);
+    // latch debug state
+    _in_debug_mode = (PINC & _BV(DB_SWITCH));
 
-    // configure input pins
-    DDRA &= ~(_BV(N_KICK_CS_PIN) | _BV(V_MONITOR_PIN) | _BV(KICK_MOSI_PIN));
+    // much disappoint, very unwow
+    // there is no clock prescaler register for the atmega32a
+    // fuse bits are read at boot time. Source and speed is set from the
+    // same register. Test and set the value for 8MHz internal oscillator.
+    /* 
+    EEPROM_OpStatus_t tts_res = EEPROM_test_and_set(SYSCLK_FUSE_CKSEL_ADDR,
+						    SYSCLK_FUSE_CKSEL_VAL_8MHZ,
+						    NULL);
 
-    PORTB &= ~(_BV(BALL_SENSE_RX));
-    DDRB &= ~(_BV(BALL_SENSE_RX));
+    // handle the verification
+    switch (tts_res) {
+    // update required and successful, reboot
+    case EEPROM_TS_UPDATE_OK: {
+        // reboot
+        break;
+    }
+    // update failed, failing to setup the clk is a critical error
+    // latch crit_err and halt
+    case EEPROM_TS_UPDATE_FAILED: {
+        // latch error
+        break;
+    }
+    // update not necessary
+    case EEPROM_TS_SKIPPED:
+    default:
+        break;
+    }
+    */
+
+    //CLKPR = _BV(CLKPCE);
+    //CLKPR = 0;  // corresponds to CLKDIV1 prescale, also keeps CLKPCE low
+
+    // configure core io
+    DDRB |= _BV(KICK_MISO_PIN);
+    DDRB &= ~(_BV(N_KICK_CS_PIN) | _BV(KICK_MOSI_PIN));
+
+    // configure hv mon
+    DDRA &= ~(_BV(V_MONITOR_PIN));
+    DDRA |= (_BV(HV_IND_MAX) | _BV(HV_IND_HIGH) | _BV(HV_IND_MID) | _BV(HV_IND_LOW) | _BV(HV_IND_MIN));
+
+    // configure LT3751 
+    DDRD |= _BV(LT_CHARGE);
+    DDRD &= ~(_BV(LT_DONE_N) | _BV(LT_FAULT_N));
+
+    // configure ball sense
+    DDRD |= (_BV(BALL_SENSE_TX) | _BV(BALL_SENSE_LED));
+    DDRA &= ~(_BV(BALL_SENSE_RX));
+
+    // configure debug
+    DDRC &= ~(_BV(DB_SWITCH) | _BV(DB_CHG_PIN) | _BV(DB_KICK_PIN) | _BV(DB_CHIP_PIN));
 
     // configure SPI
     SPCR = _BV(SPE) | _BV(SPIE);
     SPCR &= ~(_BV(MSTR));  // ensure we are a slave SPI device
 
-    // enable interrupts for PCINT0-PCINT7
-    PCICR |= _BV(PCIE0);
-
-    // enable interrupts on debug buttons
-    PCMSK0 = _BV(INT_DB_KICK) | _BV(INT_DB_CHG);
 
     ///////////////////////////////////////////////////////////////////////////
     //  TIMER INITIALIZATION
@@ -247,16 +310,16 @@ void init() {
     //  kick()
     //
     //  initialize timer
-    TIMSK0 |= _BV(OCIE0A);    // Interrupt on TIMER 0
-    TCCR0A |= _BV(WGM01);     // CTC - Clear Timer on Compare Match
-    OCR0A = TIMING_CONSTANT;  // OCR0A is max val of timer before reset
+    TIMSK |= _BV(OCIE0);    // Interrupt on TIMER 0
+    TCCR0 |= _BV(COM01);     // COM01 - Clear Timer on Compare Match
+    OCR0 = TIMING_CONSTANT;  // OCR0A is max val of timer before reset
     ///////////////////////////////////////////////////////////////////////////
 
     // Set low bits corresponding to pin we read from
-    ADMUX |= _BV(ADLAR) | 0x00;  // connect PA0 (V_MONITOR_PIN) to ADC
+    ADMUX |= _BV(ADLAR) | 0x06;  // connect PA6 (V_MONITOR_PIN) to ADC
 
     // ensure ADC isn't shut off
-    PRR &= ~_BV(PRADC);
+    // PRR &= ~_BV(PRADC);
     ADCSRA |= _BV(ADEN);  // enable the ADC - Pg. 133
 
     // enable global interrupts
@@ -298,6 +361,7 @@ ISR(SPI_STC_vect) {
  *
  * ISR for PCINT8 - PCINT11
  */
+/*
 ISR(PCINT0_vect) {
     // First we get the current state of each button, active low
     int dbg_switched = !(PINB & _BV(DB_SWITCH));
@@ -318,6 +382,7 @@ ISR(PCINT0_vect) {
     kick_db_down_ = kick_db_pressed;
     charge_db_down_ = charge_db_pressed;
 }
+*/
 
 /*
  * Timer interrupt for chipping/kicking - called every millisecond by timer
@@ -339,7 +404,7 @@ ISR(PCINT0_vect) {
  * When CS01 is one, the clk is prescaled by 8
  * (When CS00 is one, and CS01 is 0, no prescale. We don't use this)
  */
-ISR(TIMER0_COMPA_vect) {
+ISR(TIMER0_COMP_vect) {
     if (pre_kick_cooldown_ >= 0) {
         /* PRE KICKING STATE
          * stop charging
@@ -357,7 +422,7 @@ ISR(TIMER0_COMPA_vect) {
          */
 
         // set KICK pin
-        PORTB |= _BV(KICK_PIN);
+        PORTC |= _BV(KICK_PIN);
 
         timer_cnts_left_--;
     } else if (post_kick_cooldown_ >= 0) {
@@ -368,7 +433,7 @@ ISR(TIMER0_COMPA_vect) {
          */
 
         // kick is done
-        PORTB &= ~_BV(KICK_PIN);
+        PORTC &= ~_BV(KICK_PIN);
 
         post_kick_cooldown_--;
     } else if (kick_wait_ >= 0) {
@@ -387,7 +452,7 @@ ISR(TIMER0_COMPA_vect) {
          */
 
         // stop prescaled timer
-        TCCR0B &= ~_BV(CS01);
+        TCCR0 &= ~_BV(CS01);
     }
 }
 
