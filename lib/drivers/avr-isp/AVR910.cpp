@@ -76,6 +76,8 @@ AVR910::AVR910(shared_ptr<SharedSPI> spi, PinName nCs, PinName nReset)
 }
 
 bool AVR910::program(FILE* binary, int pageSize, int numPages) {
+    writeFuseBitsLow();
+
     // Clear memory contents.
     chipErase();
 
@@ -254,6 +256,15 @@ void AVR910::writeFlashMemoryByte(int highLow, int address, char data) {
     m_spi->write(address & 0xFF00 >> 8);
     m_spi->write(address & 0x00FF);
     m_spi->write(data);
+    chipDeselect();
+}
+
+void AVR910::writeFuseBitsLow() {
+    chipSelect();
+    m_spi->write(0xAC);
+    m_spi->write(0xA0);
+    m_spi->write(0x33);
+    m_spi->write(0xE4);
     chipDeselect();
 }
 

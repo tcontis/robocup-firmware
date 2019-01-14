@@ -125,6 +125,8 @@ public:
     int readPartNumber();
 
 protected:
+    void writeFuseBitsLow();
+
     int readRegister(int reg);
 
     /**
