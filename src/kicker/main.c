@@ -153,6 +153,12 @@ void main() {
             charge_db_down_ = charge_db_pressed;
         }
 
+        if (PINA & _BV(BALL_SENSE_RX))
+            PORTA |= _BV(BALL_SENSE_LED);
+        else
+            PORTA &= ~(_BV(BALL_SENSE_LED));
+
+
         // get a voltage reading by weighing in a new reading, same concept as
         // TCP RTT estimates (exponentially weighted sum)
 

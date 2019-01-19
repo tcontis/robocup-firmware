@@ -58,7 +58,7 @@ AVR910::AVR910(shared_ptr<SharedSPI> spi, PinName nCs, PinName nReset)
 	// hardware. We need to wait at least a half ms before toggling
 	// nReset or the pulse will be asserted while SPI clk is high, which
 	// in violation of the datasheet requirements
-	Thread::wait(1); // wait 5ms
+	//Thread::wait(1); // wait 5ms
 
         // Give nReset a positive pulse, which should place the AT in serial
 	// flash mode
