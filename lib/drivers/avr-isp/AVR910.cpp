@@ -76,7 +76,7 @@ AVR910::AVR910(shared_ptr<SharedSPI> spi, PinName nCs, PinName nReset)
 }
 
 bool AVR910::program(FILE* binary, int pageSize, int numPages) {
-    writeFuseBitsLow();
+    //writeFuseBitsLow();
 
     // Clear memory contents.
     chipErase();
