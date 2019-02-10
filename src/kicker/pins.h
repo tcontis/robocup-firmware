@@ -36,6 +36,6 @@
 #define DB_CHIP_PIN (PC3)
 
 #define MCU_GREEN (PD3)
-#define MCU_YELLOW (PD6)
-#define MCU_RED (PD5)
+#define MCU_YELLOW (PD5)
+#define MCU_RED (PD6)
 

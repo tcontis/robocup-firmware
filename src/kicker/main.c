@@ -132,11 +132,14 @@ uint8_t get_voltage() {
 void main() {
     init();
 
+    PORTD |= _BV(MCU_RED);
+
     // needs to be int to force voltage_accum calculation to use ints
     const int kalpha = 32;
 
     // We handle voltage readings here
     while (true) {
+	/*
         if (_in_debug_mode) {
             PORTD |= _BV(MCU_YELLOW);
 
@@ -151,13 +154,12 @@ void main() {
 
             kick_db_down_ = kick_db_pressed;
             charge_db_down_ = charge_db_pressed;
-        }
+        } */
 
         if (PINA & _BV(BALL_SENSE_RX))
-            PORTA |= _BV(BALL_SENSE_LED);
+            PORTD &= ~(_BV(BALL_SENSE_LED));
         else
-            PORTA &= ~(_BV(BALL_SENSE_LED));
-
+            PORTD |= _BV(BALL_SENSE_LED);
 
         // get a voltage reading by weighing in a new reading, same concept as
         // TCP RTT estimates (exponentially weighted sum)
@@ -229,48 +231,18 @@ void init() {
     WDTCR |= (_BV(WDTOE) | _BV(WDE));
     WDTCR = 0x00;
 
+    SFIOR |= _BV(PUD);
+
     // config status LEDs and set ERR/WARN until init done
     DDRD |= _BV(MCU_GREEN);
     DDRD |= _BV(MCU_YELLOW);
     DDRD |= _BV(MCU_RED);
 
-    PORTD |= _BV(MCU_YELLOW);
-    PORTD |= _BV(MCU_RED);
+    PORTD &= ~(_BV(MCU_YELLOW));
+    PORTD &= ~(_BV(MCU_RED));
 
     // latch debug state
     _in_debug_mode = (PINC & _BV(DB_SWITCH));
-
-    // much disappoint, very unwow
-    // there is no clock prescaler register for the atmega32a
-    // fuse bits are read at boot time. Source and speed is set from the
-    // same register. Test and set the value for 8MHz internal oscillator.
-    /* 
-    EEPROM_OpStatus_t tts_res = EEPROM_test_and_set(SYSCLK_FUSE_CKSEL_ADDR,
-						    SYSCLK_FUSE_CKSEL_VAL_8MHZ,
-						    NULL);
-
-    // handle the verification
-    switch (tts_res) {
-    // update required and successful, reboot
-    case EEPROM_TS_UPDATE_OK: {
-        // reboot
-        break;
-    }
-    // update failed, failing to setup the clk is a critical error
-    // latch crit_err and halt
-    case EEPROM_TS_UPDATE_FAILED: {
-        // latch error
-        break;
-    }
-    // update not necessary
-    case EEPROM_TS_SKIPPED:
-    default:
-        break;
-    }
-    */
-
-    //CLKPR = _BV(CLKPCE);
-    //CLKPR = 0;  // corresponds to CLKDIV1 prescale, also keeps CLKPCE low
 
     // configure core io
     DDRB |= _BV(KICK_MISO_PIN);
@@ -286,15 +258,17 @@ void init() {
 
     // configure ball sense
     DDRD |= (_BV(BALL_SENSE_TX) | _BV(BALL_SENSE_LED));
+    //PORTD &= ~(_BV(BALL_SENSE_TX));
+    PORTD |= _BV(BALL_SENSE_LED);
+    PORTD |= _BV(BALL_SENSE_TX);
     DDRA &= ~(_BV(BALL_SENSE_RX));
 
     // configure debug
     DDRC &= ~(_BV(DB_SWITCH) | _BV(DB_CHG_PIN) | _BV(DB_KICK_PIN) | _BV(DB_CHIP_PIN));
 
     // configure SPI
-    SPCR = _BV(SPE) | _BV(SPIE);
-    SPCR &= ~(_BV(MSTR));  // ensure we are a slave SPI device
-
+    //SPCR = _BV(SPE) | _BV(SPIE);
+    //SPCR &= ~(_BV(MSTR));  // ensure we are a slave SPI device
 
     ///////////////////////////////////////////////////////////////////////////
     //  TIMER INITIALIZATION
@@ -316,9 +290,9 @@ void init() {
     //  kick()
     //
     //  initialize timer
-    TIMSK |= _BV(OCIE0);    // Interrupt on TIMER 0
-    TCCR0 |= _BV(COM01);     // COM01 - Clear Timer on Compare Match
-    OCR0 = TIMING_CONSTANT;  // OCR0A is max val of timer before reset
+    //TIMSK |= _BV(OCIE0);    // Interrupt on TIMER 0
+    //TCCR0 |= _BV(COM01);     // COM01 - Clear Timer on Compare Match
+    //OCR0 = TIMING_CONSTANT;  // OCR0A is max val of timer before reset
     ///////////////////////////////////////////////////////////////////////////
 
     // Set low bits corresponding to pin we read from

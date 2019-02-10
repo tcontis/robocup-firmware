@@ -42,12 +42,17 @@ bool KickerBoard::flash(bool onlyIfDifferent, bool verbose) {
         make_tuple("Device ID", ATTINY_DEVICE_ID, &AVR910::readPartNumber,
                    0xFF),
     };
+    //bool error = false;
     for (auto& check : checks) {
         if (!verify_param(get<0>(check), get<1>(check), get<2>(check),
                           get<3>(check), verbose)) {
+            //error = true;
             return false;
         }
     }
+
+    //if (error)
+    //    return false;
 
     //  Open binary file to write to AVR.
     FILE* fp = fopen(_filename.c_str(), "r");

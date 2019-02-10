@@ -1,4 +1,4 @@
-/**
+/** 
  * @author Aaron Berk
  *
  * @section LICENSE
@@ -41,18 +41,25 @@ AVR910::AVR910(shared_ptr<SharedSPI> spi, PinName nCs, PinName nReset)
     : SharedSPIDevice(spi, nCs, true), nReset_(nReset) {
     setSPIFrequency(100000);
 
+    nReset_ = 1;
+
+    Thread::wait(25);
+
     // Enter serial programming mode by pulling reset line low.
     nReset_ = 0;
 
     // Wait 20ms before issuing first command.
-    Thread::wait(20);
+    Thread::wait(25);
 
     // Enable programming mode on the chip
     // It's possible for it to fail, so try it a few times.
     bool enabled = false;
     for (int i = 0; i < 20; i++) {
         enabled = enableProgramming();
-        if (enabled) break;
+        if (enabled) {
+	    printf("Programming enabled!i\r\n");
+	    break;
+        }
 
 	// apparently the SPI calls in enableProgramming are async in the
 	// hardware. We need to wait at least a half ms before toggling
@@ -124,14 +131,14 @@ bool AVR910::program(FILE* binary, int pageSize, int numPages) {
             if (highLow == 0) {
                 loadMemoryPage(WRITE_LOW_BYTE, pageOffset, c);
                 highLow = 1;
-                // printf("Writing low\r\n");
+                //printf("Writing low\r\n");
             }
             // Write high byte.
             else {
                 loadMemoryPage(WRITE_HIGH_BYTE, pageOffset, c);
                 highLow = 0;
                 pageOffset++;
-                // printf("Writing high\r\n");
+                //printf("Writing high\r\n");
             }
         }
 
