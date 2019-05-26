@@ -12,10 +12,11 @@ ISM43340::ISM43340(SpiPtrT sharedSPI, PinName nCs, PinName _nReset, PinName intP
 }
 
 int ISM43340::writeToSpi(uint8_t* command, int length) {
-
-    while (dataReady.read() != 1);
+    wait_ms(1);
+    while (dataReady.read() == 0);
 
     chipSelect();
+    wait_ms(1);
     for (int i = 0; i < length; i += 2) {
         if (i < length) {
             uint8_t c1 = command[i];
@@ -37,16 +38,18 @@ int ISM43340::writeToSpi(uint8_t* command, int length) {
 }
 
 uint32_t ISM43340::readFromSpi() {
-
-    while (dataReady.read() != 1);
+    wait_ms(1);
+    while (dataReady.read() == 0);
 
     readBuffer.clear();
+
     chipSelect();
-    while (dataReady.read() != 0) {
+    wait_ms(1);
+    while (dataReady.read() == 1) {
         uint16_t data = m_spi->write(0x0a0a);
 
         //ignore '> ' which is the prompt
-        if (data != 0x203e){
+        if (data != NULL && data != 0x203e){
             readBuffer.push_back((uint8_t)(data));
             readBuffer.push_back((uint8_t)(data >> 8));
         }
@@ -57,6 +60,7 @@ uint32_t ISM43340::readFromSpi() {
 }
 
 void ISM43340::sendCommand(std::string command, std::string arg) {
+    printf("sendCommand command = \"%s\", arg = \"%s\"\n\r", command.c_str(), arg.c_str());
     command = command + arg;
 
     // Add delimiter and keep command of even length
@@ -68,8 +72,10 @@ void ISM43340::sendCommand(std::string command, std::string arg) {
             command += "\r";
         }
     }
+    
     writeToSpi((uint8_t*) command.data(), command.length());
     readFromSpi();
+    testPrint();
 }
 
 int32_t ISM43340::sendPacket(const rtp::Packet* pkt) {
@@ -110,23 +116,6 @@ int32_t ISM43340::sendPacket(const rtp::Packet* pkt) {
     // insert the rtp payload
     txBuffer.insert(txBuffer.end(), pkt->payload.begin(), pkt->payload.end());
 
-    printf("preparing to send %d bytes\r\n", txBuffer.size());
-
-    for (int i = 0; i < txBuffer.size(); i++) {
-      char c = txBuffer[i];
-      if (c == '\r') {
-        printf("\\r");
-
-      }
-      else if(c == '\n') {
-        printf("\\n");
-      }
-      else {
-        printf("%c", c);
-      }
-    }
-    printf("\r\n");
-
     writeToSpi(txBuffer.data(), txBuffer.size());
     readFromSpi();
 
@@ -147,12 +136,10 @@ CommLink::BufferT ISM43340::getData() {
 
 int32_t ISM43340::testPrint() {
     printf("Readbuffer Contains:\r\n");
-    wait_ms(mbedPrintWait2);
     for (int i = 0; i < readBuffer.size(); i++) {
         printf("%c", (char) readBuffer[i]);
     }
     printf("\r\n");
-    wait_ms(mbedPrintWait2);
     return 0;
 }
 
@@ -162,18 +149,7 @@ int32_t ISM43340::selfTest() {
     //wait_ms(mbedPrintWait2);
     sendCommand(ISMConstants::CMD_SET_HUMAN_READABLE);
 
-    printf("Human Readable, getting connection info\r\n");
-    wait_ms(mbedPrintWait2);
     sendCommand(ISMConstants::CMD_GET_CONNECTION_INFO);
-
-    printf("Received Data:\r\n");
-    wait_ms(mbedPrintWait2);
-    for (int i = 0; i < readBuffer.size(); i++) {
-        printf("%c", (char) readBuffer[i]);
-    }
-    printf("\r\n");
-    wait_ms(mbedPrintWait2);
-
 
     //This isn't a good measure of correctness
     isInit = readBuffer.size() > 0;
@@ -211,10 +187,10 @@ void ISM43340::reset() {
         //Configure Network
         sendCommand(ISMConstants::CMD_RESET_SOFT);
 
-        sendCommand(ISMConstants::CMD_SET_SSID, "DokiDokiNetworkClub");
-        sendCommand(ISMConstants::CMD_SET_PASSWORD, "");
+        sendCommand(ISMConstants::CMD_SET_SSID, "rj-rc-field");
+        sendCommand(ISMConstants::CMD_SET_PASSWORD, "r0b0jackets");
 
-        sendCommand(ISMConstants::CMD_SET_SECURITY, "0");
+        sendCommand(ISMConstants::CMD_SET_SECURITY, "3");
 
         sendCommand(ISMConstants::CMD_SET_DHCP, "1");
 
