@@ -12,7 +12,7 @@ RadioModule::RadioModule(BatteryVoltage *const batteryVoltage,
       kickerInfo(kickerInfo), robotID(robotID),
       kickerCommand(kickerCommand), motionCommand(motionCommand),
       radioError(radioError), link(),
-      secondRadioCS(RADIO_R1_CS) {
+      secondRadioCS(RADIO_R0_CS) {
 
     secondRadioCS = 1;
 

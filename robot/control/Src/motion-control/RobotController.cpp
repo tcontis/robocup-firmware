@@ -118,14 +118,13 @@ void RobotController::calculateBody(Eigen::Matrix<double, numStates, 1> pv,
     debugInfo.val[6] = pv(0,0) * 1000;
     debugInfo.val[7] = pv(1,0) * 1000;
     debugInfo.val[8] = pv(2,0) * 1000;
-    debugInfo.val[9] = 420 * 1000;
     
     apply_wheel_force(wheel_force, RobotModel::get().BotToWheel * pv, outputs);
 
-    debugInfo.val[10] = outputs(0, 0) * 1000;
+   /* debugInfo.val[10] = outputs(0, 0) * 1000;
     debugInfo.val[11] = outputs(1, 0) * 1000;
     debugInfo.val[12] = outputs(2, 0) * 1000;
-    debugInfo.val[13] = outputs(3, 0) * 1000;
+    debugInfo.val[13] = outputs(3, 0) * 1000;*/
 }
 
 void RobotController::calculateWheel(Eigen::Matrix<double, numWheels, 1> pv,

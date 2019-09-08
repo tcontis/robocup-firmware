@@ -99,6 +99,8 @@ void MotionControlModule::entry(void) {
     robotController.calculateBody(currentState, targetState, targetWheels);
     robotController.calculateWheel(currentWheels, targetWheels, motorCommands);
 
+    // motorCommands *= 0;
+
     prevCommand = motorCommands;
 
 
