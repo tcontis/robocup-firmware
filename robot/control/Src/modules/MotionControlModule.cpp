@@ -43,7 +43,7 @@ void MotionControlModule::entry(void) {
     Eigen::Matrix<double, 4, 1> currentWheels;
     measurements << 0, 0, 0, 0, 0;
     currentWheels << 0, 0, 0, 0;
-    
+
     if (motorFeedback->isValid/** && isRecentUpdate(motorFeedback->lastUpdate)*/) {
         for (int i = 0; i < 4; i++) {
             if (!isnan(measurements(i,0))) {
@@ -63,7 +63,7 @@ void MotionControlModule::entry(void) {
     // Update targets
     Eigen::Matrix<double, 3, 1> targetState;
     targetState << 0, 0, 0;
-    
+
     if (motionCommand->isValid && isRecentUpdate(motionCommand->lastUpdate)) {
         targetState << motionCommand->bodyXVel,
                        motionCommand->bodyYVel,

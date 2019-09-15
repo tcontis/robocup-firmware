@@ -122,16 +122,17 @@ void FPGAModule::entry(void) {
         dt = 1;
     }
 
-    debugInfo.val[9] = dt * 10000;
+    // debugInfo.val[9] = dt * 10000;
 
-    int16_t encSums[4] = {0, 0, 0, 0};
+    static int32_t encSums[4] = {0, 0, 0, 0};
 
     // Convert encoders to rad/sec from enc ticks since last readin
     for (int i = 0; i < 4; i++) {
         encSums[i] += encDeltas[i];
-        debugInfo.val[i+10] = encSums[i];   
+        // debugInfo.val[i+10] = encSums[i] / 10;
         // (rad / s) = (enc) * (rev / enc) * (rad / rev) * (1 / sec)
         motorFeedback->encoders[i] = static_cast<float>(encDeltas[i]) * (1 / static_cast<float>(ENC_TICK_PER_REV)) * (2*M_PI / 1) * (1 / dt);
+        debugInfo.val[i+8] = motorFeedback->encoders[i] * 10;
     }
 
     // Convert from adc lsb to amp

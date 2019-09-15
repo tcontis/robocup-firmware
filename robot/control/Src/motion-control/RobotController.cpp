@@ -109,22 +109,33 @@ void RobotController::calculateBody(Eigen::Matrix<double, numStates, 1> pv,
 
     Eigen::Matrix<double, numWheels, 1> wheel_force = RobotModel::get().BotToWheel * robot_force;
 
-    debugInfo.val[0] = linear_accel(0,0) * 1000;
-    debugInfo.val[1] = linear_accel(1,0) * 1000;
-    debugInfo.val[2] = linear_accel(2,0) * 1000;
-    debugInfo.val[3] = sp(0,0) * 1000;
-    debugInfo.val[4] = sp(1,0) * 1000;
-    debugInfo.val[5] = sp(2,0) * 1000;
-    debugInfo.val[6] = pv(0,0) * 1000;
-    debugInfo.val[7] = pv(1,0) * 1000;
-    debugInfo.val[8] = pv(2,0) * 1000;
-    
-    apply_wheel_force(wheel_force, RobotModel::get().BotToWheel * pv, outputs);
+    /* debugInfo.val[0] = linear_accel(0,0) * 1000; */
+    /* debugInfo.val[1] = linear_accel(1,0) * 1000; */
+    /* debugInfo.val[2] = linear_accel(2,0) * 1000; */
+    /* debugInfo.val[3] = sp(0,0) * 1000; */
+    /* debugInfo.val[4] = sp(1,0) * 1000; */
+    /* debugInfo.val[5] = sp(2,0) * 1000; */
+    /* debugInfo.val[6] = pv(0,0) * 1000; */
+    /* debugInfo.val[7] = pv(1,0) * 1000; */
+    /* debugInfo.val[8] = pv(2,0) * 1000; */
 
-   /* debugInfo.val[10] = outputs(0, 0) * 1000;
-    debugInfo.val[11] = outputs(1, 0) * 1000;
-    debugInfo.val[12] = outputs(2, 0) * 1000;
-    debugInfo.val[13] = outputs(3, 0) * 1000;*/
+    // apply_wheel_force(wheel_force, RobotModel::get().BotToWheel * pv, outputs);
+    Eigen::Matrix<double, numWheels, 1> wheel_speed = RobotModel::get().BotToWheel * sp;
+    for (int i = 0; i < 4; i++) {
+        double sign = 0;
+        if (wheel_speed(i) > 1e-3) {
+            sign = 1;
+        } else if (wheel_speed(i) < -1e-3) {
+            sign = -1;
+        }
+        outputs[i] = (wheel_speed(i) * RobotModel::get().SpeedToDutyCycle + 50.0 * sign) / 512.0;
+        debugInfo.val[4+i] = wheel_speed(i) * 10;
+    }
+
+    debugInfo.val[0] = outputs(0, 0) * 1000;
+    debugInfo.val[1] = outputs(1, 0) * 1000;
+    debugInfo.val[2] = outputs(2, 0) * 1000;
+    debugInfo.val[3] = outputs(3, 0) * 1000;
 }
 
 void RobotController::calculateWheel(Eigen::Matrix<double, numWheels, 1> pv,
