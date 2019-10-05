@@ -19,7 +19,8 @@ ROBOT_TESTS = test
 robot : robot/build/conaninfo.txt
 	cd robot && conan build . -bf build
 control-upload: configure
-	cd robot/build; make control-upload
+	# cd robot/build; make control-upload
+	python3 ../mtrain-firmware/util/flash.py robot/build/bin/control.bin
 $(ROBOT_TESTS:%=test-%-upload): configure
 	cd robot/build; make $(@F)
 
