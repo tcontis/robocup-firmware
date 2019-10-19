@@ -19,14 +19,14 @@ void dataReady_cb() {
 }
 
 ISM43340::ISM43340(std::unique_ptr<SPI> radioSPI, PinName nCsPin, PinName nResetPin,
-                   PinName dataReadyPin)
+                   PinName dataReadyPin, bool apMode)
     : radioSPI(std::move(radioSPI)),
       nCs(nCsPin),
       nReset(nResetPin),
       dataReady{dataReadyPin.port, dataReadyPin.pin},
       currentSocket(SOCKET_TYPE::SEND),
-      cmdStart(nullptr) {
-
+      cmdStart(nullptr),
+      apMode(apMode) {
     currentState = ISMConstants::State::CommandReady;
     interruptin_init_ex(dataReady, &dataReady_cb, PULL_DOWN, INTERRUPT_RISING_FALLING);
 
@@ -84,6 +84,30 @@ unsigned int ISM43340::send(const uint8_t* data, const unsigned int numBytes) {
     if (currentSocket != SOCKET_TYPE::SEND) {
         sendCommand(ISMConstants::CMD_SET_COMMUNICATION_SOCKET, ISMConstants::SEND_SOCKET);
         currentSocket = SOCKET_TYPE::SEND;
+    }
+
+    if (apMode) {
+        sendCommand(ISMConstants::CMD_GET_AP_DHCP_CACHED_ADDRESS, "1");
+        printf("%d\r\n", readBuffer.size());
+
+        // Find the first instance of ',' in the message...
+        int i = 0;
+        char ip[32];
+
+        for (; i < readBuffer.size() && readBuffer[i] != ','; i++) {}
+        i++;
+
+        int j = 0;
+        for (; j < 32 && i < readBuffer.size() && !std::isspace(readBuffer[i]); i++, j++) {
+            ip[j] = readBuffer[i];
+        }
+        ip[j] = '\0';
+
+        printf("%s\r\n", ip);
+        sendCommand(ISMConstants::CMD_SET_TRANSPORT_REMOTE_HOST_IP_ADDRESS, ip);
+    } else {
+        sendCommand(ISMConstants::CMD_SET_TRANSPORT_REMOTE_HOST_IP_ADDRESS,
+                    ISMConstants::BASE_STATION_IP);
     }
 
     // Since this is the special command in the format "S3=NUM_BYTES<CR>DATA"
@@ -291,11 +315,12 @@ void ISM43340::pingRouter() {
     sendCommand(ISMConstants::CMD_SET_PING_REPEAT_COUNT, "10");
     sendCommand(ISMConstants::CMD_PING_TARGET_ADDRESS);
     testPrint();
-    
+
     sendCommand(ISMConstants::CMD_SET_MACHINE_READABLE);
 }
 
 void ISM43340::reset() {
+    printf("Startup\r\n");
     nReset = ISMConstants::RESET_TURN_OFF;
     HAL_Delay(ISMConstants::RESET_DELAY);
     nReset = ISMConstants::RESET_TURN_ON;
@@ -335,38 +360,43 @@ void ISM43340::reset() {
     // Disconnect from a network if power doesn't toggle
     sendCommand(ISMConstants::CMD_DISCONNECT_NETWORK);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_SSID,
-                ISMConstants::NETWORK_SSID);
+    HAL_Delay(1000);
+    printf("Initializing!\r\n");
+    printf("Initializing!\r\n");
+    if (!apMode) {
+        sendCommand(ISMConstants::CMD_SET_NETWORK_SSID,
+                    ISMConstants::NETWORK_SSID);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_PASSWORD,
-                ISMConstants::NETWORK_PASSWORD);
+        sendCommand(ISMConstants::CMD_SET_NETWORK_PASSWORD,
+                    ISMConstants::NETWORK_PASSWORD);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_SECURITY_TYPE,
-                ISMConstants::TYPE_NETWORK_SECURITY::WPA2_AES);
+        sendCommand(ISMConstants::CMD_SET_NETWORK_SECURITY_TYPE,
+                    ISMConstants::TYPE_NETWORK_SECURITY::WPA2_AES);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_DHCP,
-                ISMConstants::TYPE_NETWORK_DHCP::ENABLED);
+        sendCommand(ISMConstants::CMD_SET_NETWORK_DHCP,
+                    ISMConstants::TYPE_NETWORK_DHCP::ENABLED);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_IP_VERSION,
-                ISMConstants::TYPE_NETWORK_IP_VERSION::IPV4);
+        sendCommand(ISMConstants::CMD_SET_NETWORK_IP_VERSION,
+                    ISMConstants::TYPE_NETWORK_IP_VERSION::IPV4);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_GATEWAY,
-                ISMConstants::ROUTER_IP);
+        sendCommand(ISMConstants::CMD_SET_NETWORK_GATEWAY,
+                    ISMConstants::ROUTER_IP);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_PRIMARY_DNS,
-                ISMConstants::ROUTER_IP);
+        sendCommand(ISMConstants::CMD_SET_NETWORK_PRIMARY_DNS,
+                    ISMConstants::ROUTER_IP);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_SECONDARY_DNS,
-                ISMConstants::ROUTER_IP);
+        sendCommand(ISMConstants::CMD_SET_NETWORK_SECONDARY_DNS,
+                    ISMConstants::ROUTER_IP);
 
-    sendCommand(ISMConstants::CMD_SET_NETWORK_JOIN_RETRY_COUNT,
-                "3");
+        sendCommand(ISMConstants::CMD_SET_NETWORK_JOIN_RETRY_COUNT,
+                    "3");
 
-    sendCommand(ISMConstants::CMD_NETWORK_AUTO_CONNECT,
-                ISMConstants::TYPE_NETWORK_AUTO_CONNECT::AUTO_JOIN_RECONNECT);
+        sendCommand(ISMConstants::CMD_NETWORK_AUTO_CONNECT,
+                    ISMConstants::TYPE_NETWORK_AUTO_CONNECT::AUTO_JOIN_RECONNECT);
 
-    // Connect to network
-    sendCommand(ISMConstants::CMD_JOIN_NETWORK);
+        // Connect to network
+        sendCommand(ISMConstants::CMD_JOIN_NETWORK);
+    }
 
     if (readBuffer.size() == 0 || (int)readBuffer[0] == 0) {
         // Failed to connect to network
@@ -421,4 +451,9 @@ void ISM43340::reset() {
     currentSocket = SOCKET_TYPE::SEND;
 
     printf("Radio initialized\r\n");
+
+    if (apMode) {
+        sendCommand(ISMConstants::CMD_SET_ACCESS_POINT_CHANNEL, "1");
+        sendCommand(ISMConstants::CMD_ACTIVATE_ACCESS_POINT_DIRECT_CONNECT_MODE);
+    }
 }

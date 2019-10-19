@@ -331,7 +331,7 @@ namespace ISMConstants {
 class ISM43340 : public GenericRadio {
 public:
 
-    ISM43340(std::unique_ptr<SPI> radioSPI, PinName nCsPin, PinName nResetPin, PinName dataReadyPin);
+    ISM43340(std::unique_ptr<SPI> radioSPI, PinName nCsPin, PinName nResetPin, PinName dataReadyPin, bool apMode);
 
     /**
      * Blocking call to send X number of bytes from `data` over the radio
@@ -374,7 +374,6 @@ public:
     bool isConnected() const { return isInit; }
 
     int32_t testPrint();
-
 
 private:
     /**
@@ -448,4 +447,6 @@ private:
     uint8_t *cmdStart;
 
     bool isInit = false;
+
+    bool apMode = false;
 };
