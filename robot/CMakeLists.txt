@@ -10,6 +10,8 @@ conan_basic_setup(TARGETS)
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${CMAKE_BINARY_DIR}/bin" )
 
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+
 add_definitions(-Wall)
 
 # TODO: remove

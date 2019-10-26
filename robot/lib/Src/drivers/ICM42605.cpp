@@ -64,6 +64,14 @@ namespace Registers {
     constexpr uint8_t WHO_AM_I = 0x75;
     constexpr uint8_t REG_BANK_SEL = 0x76;
 
+    constexpr uint8_t INTF_CONFIG4 = 0x7A;
+    constexpr uint8_t INTF_CONFIG6 = 0x7C;
+
+    // Bank 1
+    constexpr uint8_t OTP_SEC_STATUS = 0x70;
+
+    constexpr uint8_t BIT_STATUS_RESET_DONE = 0x10;
+
     enum SpiSlewRate {
         NS_20_TO_60 = 0,
         NS_12_TO_36 = 1,
@@ -122,14 +130,16 @@ namespace Registers {
 
 ICM42605::ICM42605(std::shared_ptr<SPI> spi_bus, PinName cs_pin)
     : spi_bus(spi_bus),
-      chip_select_pin(cs_pin, PullType::PullNone, PinMode::PushPull, PinSpeed::Low, true) {}
+      chip_select_pin(cs_pin, PullType::PullNone, PinMode::PushPull, PinSpeed::Low, true) {
+    chip_select_pin.write(false);
+    HAL_Delay(1500);
+}
 
 void ICM42605::initialize() {
-    chip_select(true);
+    // chip_select(true);
 
-    // Set up SPI
-    // For now, just let the other devices determine frequency
-    // spi_bus->frequency(IMU_SPI_FREQ);
+    write_register(Registers::REG_BANK_SEL, 1);
+    write_register(Registers::INTF_CONFIG4, 2);
 
     // The ICM42605 has several banks of registers, each with a different set of
     // properties. The bank in use will be selected by REG_BANK_SEL.
@@ -138,14 +148,40 @@ void ICM42605::initialize() {
     // a good idea to select it anyway in case we were in an invalid state.
     write_register(Registers::REG_BANK_SEL, 0);
 
+    write_register(Registers::DEVICE_CONFIG, 1);
+
+    HAL_Delay(1);
+
+    write_register(Registers::REG_BANK_SEL, 1);
+
+    uint8_t data;
+
+    printf("Start waiting");
+    do {
+        write_register(Registers::INTF_CONFIG4, 2);
+        read_register(Registers::OTP_SEC_STATUS);
+        HAL_Delay(1);
+    } while (!(data & Registers::BIT_STATUS_RESET_DONE));
+    printf("Boot complete\n");
+
+    write_register(Registers::REG_BANK_SEL, 0);
+
+    // Maybe reading this bit clears it?
+    read_register(Registers::INT_STATUS);
+
+    // Disable things
+    write_register(Registers::REG_BANK_SEL, 1);
+    write_register(Registers::INTF_CONFIG6, 0);
+
+    // Enable the gyro in low-noise mode.
+    uint8_t old = read_register(Registers::PWR_MGMT0);
+    write_register(Registers::PWR_MGMT0, Registers::GyroMode::LOW_NOISE << 2);
+
     // Check WHO_AM_I register. It shouldn't have changed from the default value.
     uint8_t id = read_register(Registers::WHO_AM_I);
     if (id != 0x42) {
         // Error handling
     }
-
-    // Enable the gyro in low-noise mode.
-    write_register(Registers::PWR_MGMT0, Registers::GyroMode::LOW_NOISE << 2);
 
     // Run a self-test on the gyro z-axis only.
     write_register(Registers::SELF_TEST_CONFIG, 1 << 6 | 1 << 2);
@@ -164,16 +200,16 @@ void ICM42605::initialize() {
             | Registers::GyroFiltOrd::ORD_1 << 2
             | Registers::GyroFiltOrd::ORD_3);
 
-    chip_select(false);
+    // chip_select(false);
 }
 
 float ICM42605::gyro_z() {
-    chip_select(true);
+    // chip_select(true);
 
-    uint16_t hi = read_register(Registers::GYRO_DATA_Z1),
-             lo = read_register(Registers::GYRO_DATA_Z0);
+    uint16_t hi = read_register(Registers::WHO_AM_I),
+             lo = read_register(Registers::WHO_AM_I);
 
-    chip_select(false);
+    // chip_select(false);
 
     // Reinterpret the bits as a signed 16-bit integer
     int16_t total = hi << 8 | lo;
@@ -192,6 +228,8 @@ uint8_t ICM42605::read_register(uint8_t address) {
     uint8_t data_tx[2] = {address | READ_BIT, 0x0};
     uint8_t data_rx[2] = {0x0, 0x0};
     spi_bus->transmitReceive(data_tx, data_rx, 2);
+
+    printf("%x%x -> %x%x\r\n", data_tx[0], data_tx[1], data_rx[0], data_rx[1]);
 
     // Restore previous CS state
     chip_select(was_cs_active);
@@ -215,6 +253,6 @@ void ICM42605::write_register(uint8_t address, uint8_t value) {
 void ICM42605::chip_select(bool active) {
     if (currently_active != active) {
         currently_active = active;
-        chip_select_pin.write(!active);
+        chip_select_pin.write(active);
     }
 }
