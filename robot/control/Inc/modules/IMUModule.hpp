@@ -2,8 +2,8 @@
 
 #include "I2C.hpp"
 #include "GenericModule.hpp"
-#include "MicroPackets.hpp" 
-#include "drivers/MPU6050.h"
+#include "MicroPackets.hpp"
+#include "drivers/LSM9DS1.h"
 #include <memory>
 
 class IMUModule : public GenericModule {
@@ -22,5 +22,5 @@ public:
 private:
     IMUData *const imuData;
 
-    MPU6050 imu;
+    LSM9DS1 imu;
 };
