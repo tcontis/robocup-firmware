@@ -6,6 +6,7 @@ add_library(firm-lib
   Src/drivers/Battery.cpp
   Src/drivers/FPGA.cpp
   Src/drivers/I2Cdev.cpp
+  Src/drivers/LSM9DS1.cpp
   Src/drivers/ISM43340.cpp
   Src/drivers/KickerBoard.cpp
   Src/drivers/MCP23017.cpp

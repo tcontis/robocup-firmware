@@ -1,60 +1,60 @@
-#include "mbed.h"
-#include "LSM9DS1.h"
+#include "drivers/LSM9DS1.hpp"
 
-lsm9ds1::LSM9DS1(SPI& _spi, PinName _csAG, PinName _csM) : spi(_spi), csAG(_csAG), csM(_csM) {}
+LSM9DS1::LSM9DS1(std::shared_ptr<SPI> spi_bus, PinName _csAG, PinName _csM) : spi_bus(spi_bus), csAG(_csAG), csM(_csM) {}
+
 
 unsigned int LSM9DS1::WriteRegAG( uint8_t WriteAddr, uint8_t WriteData)
 {
-      unsigned int temp_val;
     selectAG();
-    spi.write(WriteAddr);
-    temp_val=spi.write(WriteData);
+    spi_bus->transmit(WriteAddr);
+    unsigned int temp_val = spi_bus->transmitReceive(WriteData);
     deselectAG();
-    wait_us(5);
+    HAL_Delay(1);
+    // wait_us(5);
     return temp_val;
 }
 
 unsigned int LSM9DS1::WriteRegM( uint8_t WriteAddr, uint8_t WriteData)
 {
-      unsigned int temp_val;
     selectM();
-    spi.write(WriteAddr);
-    temp_val=spi.write(WriteData);
+    spi_bus->transmit(WriteAddr);
+    unsigned int temp_val= spi_bus->transmitReceive(WriteData);
     deselectM();
-    wait_us(5);
+    HAL_Delay(1);
+    // wait_us(5);
     return temp_val;
 }
 
 unsigned int LSM9DS1::ReadRegAG( uint8_t WriteAddr, uint8_t WriteData)
 {
-        return WriteRegAG(WriteAddr | READ_FLAG, WriteData);
+    return WriteRegAG(WriteAddr | READ_FLAG, WriteData);
 }
 
 unsigned int LSM9DS1::ReadRegM( uint8_t WriteAddr, uint8_t WriteData)
 {
-        return WriteRegM(WriteAddr | READ_FLAG, WriteData);
+    return WriteRegM(WriteAddr | READ_FLAG, WriteData);
 }
+
 
 void LSM9DS1::ReadRegsAG( uint8_t ReadAddr, uint8_t *ReadBuf, unsigned int Bytes )
 {
-    unsigned int  i = 0;
+    std::vector<uint8_t> WriteBuf;
+    WriteBuf.assign(Bytes, 0x00);
 
     selectAG();
-    spi.write(ReadAddr | READ_FLAG);
-    for(i=0; i<Bytes; i++)
-        ReadBuf[i] = spi.write(0x00);
+    spi_bus->transmit(ReadAddr | READ_FLAG);
+    spi_bus->transmitReceive(WriteBuf.data(), ReadBuf, Bytes);
     deselectAG();
-    //wait_us(50);
 }
 
 void LSM9DS1::ReadRegsM( uint8_t ReadAddr, uint8_t *ReadBuf, unsigned int Bytes )
 {
-    unsigned int  i = 0;
+    std::vector<uint8_t> WriteBuf;
+    WriteBuf.assign(Bytes, 0x00);
 
     selectM();
-    spi.write(ReadAddr | READ_FLAG);
-    for(i=0; i<Bytes; i++)
-        ReadBuf[i] = spi.write(0x00);
+    spi_bus->transmit(ReadAddr | READ_FLAG);
+    spi_bus->transmitReceive(WriteBuf.data(), ReadBuf, Bytes);
     deselectM();
 }
 
@@ -111,7 +111,7 @@ MAG_SENS_16GAUSS
 */
 
 
-void LSM9DS1::init() {
+void LSM9DS1::initialize() {
 
     deselectAG();
     deselectM();
@@ -137,8 +137,9 @@ void LSM9DS1::init() {
         {0x00, CTRL_REG5_M}, // Fast read disabled, continuous update
         {0x02, INT_CFG_M},
     };
-    spi.format(8,3);
-    spi.frequency(10000000);
+
+    // spi_bus->format(8,3);
+    spi_bus->frequency(10000000);
 
     for(int i=0; i<LSM_InitRegNumAG; i++) {
         WriteRegAG(LSM_Init_Data[i][1], LSM_Init_Data[i][0]);
@@ -166,7 +167,6 @@ void LSM9DS1::read_acc()
         data=(float)bit_data;
         accelerometer_data[i]=data*acc_multiplier;
     }
-
 }
 
 void LSM9DS1::read_gyr()
@@ -213,33 +213,45 @@ void LSM9DS1::read_mag()
 
 void LSM9DS1::read_all()
 {
-        read_acc();
-        read_gyr();
-        read_mag();
+    read_acc();
+    read_gyr();
+    read_mag();
+}
+
+float LSM9DS1::gyro_x() {
+    return gyroscope_data[0];
+}
+
+float LSM9DS1::gyro_y() {
+    return gyroscope_data[1];
+}
+
+float LSM9DS1::gyro_z() {
+    return gyroscope_data[2];
 }
 
 unsigned int LSM9DS1::whoami()
 {
-        return ReadRegAG(WHO_AM_I_XG, 0x00);
+    return ReadRegAG(WHO_AM_I_XG, 0x00);
 }
 
 unsigned int LSM9DS1::whoamiM()
 {
-        return ReadRegM(WHO_AM_I_M, 0x00);
+    return ReadRegM(WHO_AM_I_M, 0x00);
 }
 
 void LSM9DS1::selectAG() {
-        csAG = 0;
+    csAG = 0;
 }
 
 void LSM9DS1::selectM() {
-        csM = 0;
+    csM = 0;
 }
 
 void LSM9DS1::deselectAG() {
-        csAG = 1;
+    csAG = 1;
 }
 
 void LSM9DS1::deselectM() {
-        csM = 1;
+    csM = 1;
 }

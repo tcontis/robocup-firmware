@@ -1,7 +1,8 @@
-#ifndef __LSM9DS1_H__
-#define __LSM9DS1_H__
+#pragma once
 
-#include "mbed.h"
+#include <memory>
+#include "SPI.hpp"
+#include "DigitalOut.hpp"
 
 /////////////////////////////////////////
 // LSM9DS1 Accel/Gyro (XL/G) Registers //
@@ -127,43 +128,50 @@
 #define READ_FLAG 0x80
 
 
+// TODO check if something like this is needed
+// static constexpr uint8_t ICM42605_ADDRESS = 0x69;
+
 
 class LSM9DS1
 {
-        SPI& spi;
-        DigitalOut csAG;
-        DigitalOut csM;
 
-    public:
-        LSM9DS1(SPI& _spi, PinName _csAG, PinName _csM);
-        unsigned int WriteRegAG(uint8_t WriteAddr, uint8_t WriteData);
-        unsigned int WriteRegM(uint8_t WriteAddr, uint8_t WriteData);
-        unsigned int ReadRegAG(uint8_t WriteAddr, uint8_t WriteData);
-        unsigned int ReadRegM(uint8_t WriteAddr, uint8_t WriteData);
-        void ReadRegsAG(uint8_t ReadAddr, uint8_t *ReadBuf, unsigned int Bytes );
-        void ReadRegsM(uint8_t ReadAddr, uint8_t *ReadBuf, unsigned int Bytes );
+private:
+    std::shared_ptr<SPI> spi_bus;
+    DigitalOut csAG;
+    DigitalOut csM;
 
-        void selectAG();
-        void selectM();
-        void deselectAG();
-        void deselectM();
+    float acc_multiplier;
+    float gyro_multiplier;
+    float mag_multiplier;
+    float accelerometer_data[3];
+    float gyroscope_data[3];
+    float magnetometer_data[3];
 
-        void init();
-        unsigned int whoami();
-        unsigned int whoamiM();
-        float read_temp();      // reads temperature in degrees C
-        void read_acc();        // reads accelerometer in G
-        void read_gyr();        // reads gyroscope in DPS
-        void read_mag();        // reads magnetometer in gauss
-        void read_all();        // reads acc / gyro / magneto
+public:
+    LSM9DS1(std::shared_ptr<SPI> spi_bus, PinName _csAG, PinName _csM);
+    unsigned int WriteRegAG(uint8_t WriteAddr, uint8_t WriteData);
+    unsigned int WriteRegM(uint8_t WriteAddr, uint8_t WriteData);
+    unsigned int ReadRegAG(uint8_t WriteAddr, uint8_t WriteData);
+    unsigned int ReadRegM(uint8_t WriteAddr, uint8_t WriteData);
+    void ReadRegsAG(uint8_t ReadAddr, uint8_t *ReadBuf, unsigned int Bytes );
+    void ReadRegsM(uint8_t ReadAddr, uint8_t *ReadBuf, unsigned int Bytes );
 
-        float acc_multiplier;
-        float gyro_multiplier;
-        float mag_multiplier;
-        float accelerometer_data[3];
-        float gyroscope_data[3];
-        float magnetometer_data[3];
+    void selectAG();
+    void selectM();
+    void deselectAG();
+    void deselectM();
+
+    void initialize();
+    unsigned int whoami();
+    unsigned int whoamiM();
+    float read_temp();      // reads temperature in degrees C
+    void read_acc();        // reads accelerometer in G
+    void read_gyr();        // reads gyroscope in DPS
+    void read_mag();        // reads magnetometer in gauss
+    void read_all();        // reads acc / gyro / magneto
+
+    float gyro_x();
+    float gyro_y();
+    float gyro_z();
 
 };
-
-#endif
