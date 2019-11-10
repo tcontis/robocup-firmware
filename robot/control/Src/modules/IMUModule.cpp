@@ -19,13 +19,12 @@ IMUModule::IMUModule(std::shared_ptr<SPI> sharedSPI, IMUData * imuData)
         imuData->accelerations[i] = 0.0f;
         imuData->omegas[i] = 0.0f;
     }
-    printf("INFO: IMU initialization done\r\n");
 }
 
 void IMUModule::entry(void) {
     printf("INFO: IMU entry\r\n");
     //TODO: Fix how ineffecient this is with data passing
-    imu.read_all();
+    imu.read_gyr();
 
     imuData->omegas[0] = imu.gyro_x();
     imuData->omegas[1] = imu.gyro_y();
@@ -33,5 +32,5 @@ void IMUModule::entry(void) {
 
     imuData->isValid = true;
     imuData->lastUpdate = HAL_GetTick();
-    printf("INFO: Gryo Data%f", imuData->omegas[2]);
+    printf("INFO: Gryo Data %d\r\n", (int) imuData->omegas[2]);
 }
