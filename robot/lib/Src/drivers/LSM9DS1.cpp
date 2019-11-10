@@ -38,12 +38,7 @@ unsigned int LSM9DS1::ReadRegM( uint8_t WriteAddr, uint8_t WriteData)
 
 void LSM9DS1::ReadRegsAG( uint8_t ReadAddr, uint8_t *ReadBuf, unsigned int Bytes )
 {
-    std::vector<uint8_t> WriteBuf;
-    WriteBuf.assign(Bytes, 0x00);
-
     selectAG();
-    spi_bus->transmit(ReadAddr | READ_FLAG);
-    spi_bus->transmitReceive(WriteBuf.data(), ReadBuf, Bytes);
     deselectAG();
 }
 
@@ -112,6 +107,7 @@ MAG_SENS_16GAUSS
 
 
 void LSM9DS1::initialize() {
+    printf("Initializing LSM9DS1\n");
 
     deselectAG();
     deselectM();
@@ -153,6 +149,10 @@ void LSM9DS1::initialize() {
     acc_multiplier = ACC_SENS_2G;
     gyro_multiplier = GYR_SENS_500DPS;
     mag_multiplier = MAG_SENS_4GAUSS;
+
+    // HAL_Delay(100);
+    //
+    // printf("Initializing LSM9DS1 done with %02x\n", whoami());
 }
 
 void LSM9DS1::read_acc()
@@ -175,13 +175,15 @@ void LSM9DS1::read_gyr()
     int16_t bit_data;
     float data;
     int i;
-    ReadRegsAG(OUT_X_L_G,response,6);
+    for (i = 0; i < 6; i++) {
+        response[i] = ReadRegAG(OUT_X_L_G + i, 0x00);
+    }
+    // ReadRegsAG(OUT_X_L_G,response,6);
     for(i=0; i<3; i++) {
         bit_data=((int16_t)response[i*2+1]<<8)|response[i*2];
         data=(float)bit_data;
         gyroscope_data[i]=data*gyro_multiplier;
     }
-
 }
 
 float LSM9DS1::read_temp(){
