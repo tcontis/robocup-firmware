@@ -1,47 +1,41 @@
 #pragma once
 
-#include "HAL_attiny167.h"
-
-/*
-VMON        PIN_A0
-n btn chg   PIN_A1
-miso        PIN_A2
-nbtnkck     PIN_A3
-mosi        PIN_A4
-sck         PIN_A5
-n kicker cs PIN_A6
-n btn chp   PIN_A7
-chip        PIN_B0
-kck         PIN_B1
-charge      PIN_B2
-bb rx       PIN_B3
-bb tx       PIN_B4
-mode select PIN_B5
-n reset     pb7
-*/
+#include <avr/io.h>
 
 /* core */
-#define N_KICK_CS_PIN (PIN_A6)
-#define KICK_MOSI_PIN (PIN_A4)
-#define KICK_MISO_PIN (PIN_A2)
-#define KICK_SCK_PIN  (PIN_A5)
+#define N_KICK_CS_PIN (PB4)
+#define KICK_MOSI_PIN (PB5)
+#define KICK_MISO_PIN (PB6)
 
 /* hv monitoring */
-#define V_MONITOR_PIN (PIN_A0)
+#define V_MONITOR_PIN (PA6)
+#define HV_IND_MAX (PA5)
+#define HV_IND_HIGH (PA4)
+#define HV_IND_MID (PA3)
+#define HV_IND_LOW (PA2)
+#define HV_IND_MIN (PA1)
 
 /* hv reg */
-#define LT_CHARGE  (PIN_B2)
+#define LT_CHARGE (PD0)
+#define LT_DONE_N (PD1)
+#define LT_FAULT_N (PD2)
 
 /* hv out */
-#define KICK_PIN (PIN_B1)
-#define CHIP_PIN (PIN_B0)
+#define KICK_PIN (PC4)
+#define CHIP_PIN (PC5)
 
 /* ball sense */
-#define BALL_SENSE_TX  (PIN_B4)
-#define BALL_SENSE_RX  (PIN_B3)
+#define BALL_SENSE_TX (PD4)
+#define BALL_SENSE_RX (PA0)
+#define BALL_SENSE_LED (PD7)
 
 /* debug */
-#define DB_SWITCH   (PIN_B5)
-#define DB_CHG_PIN  (PIN_A1)
-#define DB_KICK_PIN (PIN_A3)
-#define DB_CHIP_PIN (PIN_A7)
+#define DB_SWITCH (PC0)
+#define DB_CHG_PIN (PC1)
+#define DB_KICK_PIN (PC2)
+#define DB_CHIP_PIN (PC3)
+
+#define MCU_GREEN (PD3)
+#define MCU_YELLOW (PD5)
+#define MCU_RED (PD6)
+

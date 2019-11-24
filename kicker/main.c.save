@@ -27,12 +27,12 @@
 #define NO_COMMAND 0
 
 // number of steps of resolution we want per millisecond
-#define TIMER_PER_MS 4
+#define TIMER_PER_MS 20
 
 // calculate our TIMING_CONSTANT (timer cmp val) from the desired resolution
 #define CLK_FREQ 8000000  // after removing default CLKDIV8 prescale
 #define TIMER_PRESCALE \
-   8  // set by TCCR0B |= _BV(CS01) which also starts the timer
+    8  // set by TCCR0B |= _BV(CS01) which also starts the timer
 #define MS_PER_SECOND 1000
 
 #define MAX_TIMER_FREQ (CLK_FREQ / TIMER_PRESCALE)
@@ -84,15 +84,15 @@ uint8_t execute_cmd(uint8_t, uint8_t);
  * Checks and returns if we're in the middle of a kick
  */
 bool is_kicking() {
-    return pre_kick_cooldown_ >= 0 || timer_cnts_left_ >= 0 || post_kick_cooldown_ >= 0 || kick_wait_ >= 0;
-	}
+    return pre_kick_cooldown_ >= 0 || timer_cnts_left_ >= 0 ||
+           post_kick_cooldown_ >= 0 || kick_wait_ >= 0;
+}
 
 /*
  * start the kick FSM for desired strength. If the FSM is already running,
  * the call will be ignored.
  */
 void kick(uint8_t strength) {
-
     // check if the kick FSM is running
     if (is_kicking()) return;
 
@@ -111,9 +111,7 @@ void kick(uint8_t strength) {
     timer_cnts_left_ = (int)(time_cnt_flt + 0.5f);  // round
 
     // start timer to enable the kick FSM processing interrupt
-    //TCCR0 |= _BV(CS01);
-    TCCR0 |= 0b01;
-
+    TCCR0 |= _BV(CS01);
 }
 
 void init();
@@ -141,32 +139,28 @@ void main() {
 
     // We handle voltage readings here
     while (true) {
-	
+	/*
         if (_in_debug_mode) {
-            //PORTD |= (_BV(MCU_YELLOW));
-	    char kick_db_pressed = !(PINC & _BV(DB_KICK_PIN));
+            PORTD |= _BV(MCU_YELLOW);
+
+            char kick_db_pressed = !(PINC & _BV(DB_KICK_PIN));
             char charge_db_pressed = !(PINC & _BV(DB_CHG_PIN));
 
-            if (!kick_db_down_ && kick_db_pressed) 
+            if (!kick_db_down_ && kick_db_pressed)
                 kick(255);
-		
+            
             if (!charge_db_down_ && charge_db_pressed)
                 charge_commanded_ = !charge_commanded_;
 
             kick_db_down_ = kick_db_pressed;
             charge_db_down_ = charge_db_pressed;
-            
-	}  
+        } */
 
         if (PINA & _BV(BALL_SENSE_RX))
             PORTD &= ~(_BV(BALL_SENSE_LED));
         else
             PORTD |= _BV(BALL_SENSE_LED);
 
-	if (is_kicking())
-	    PORTD &= ~(_BV(MCU_YELLOW));
-	else
-		PORTD |= _BV(MCU_YELLOW);
         // get a voltage reading by weighing in a new reading, same concept as
         // TCP RTT estimates (exponentially weighted sum)
 
@@ -272,9 +266,6 @@ void init() {
     // configure debug
     DDRC &= ~(_BV(DB_SWITCH) | _BV(DB_CHG_PIN) | _BV(DB_KICK_PIN) | _BV(DB_CHIP_PIN));
 
-   // disable JTAG
-    MCUCSR |= (1<<JTD);
-    MCUCSR |= (1<<JTD);
     // configure SPI
     //SPCR = _BV(SPE) | _BV(SPIE);
     //SPCR &= ~(_BV(MSTR));  // ensure we are a slave SPI device
@@ -299,9 +290,9 @@ void init() {
     //  kick()
     //
     //  initialize timer
-    TIMSK |= _BV(OCIE0);    // Interrupt on TIMER 0
-    TCCR0 |= _BV(COM01);     // COM01 - Clear Timer on Compare Match
-    OCR0 = TIMING_CONSTANT;  // OCR0A is max val of timer before reset
+    //TIMSK |= _BV(OCIE0);    // Interrupt on TIMER 0
+    //TCCR0 |= _BV(COM01);     // COM01 - Clear Timer on Compare Match
+    //OCR0 = TIMING_CONSTANT;  // OCR0A is max val of timer before reset
     ///////////////////////////////////////////////////////////////////////////
 
     // Set low bits corresponding to pin we read from
@@ -394,11 +385,12 @@ ISR(PCINT0_vect) {
  * (When CS00 is one, and CS01 is 0, no prescale. We don't use this)
  */
 ISR(TIMER0_COMP_vect) {
-        if (pre_kick_cooldown_ >= 0) {
+    if (pre_kick_cooldown_ >= 0) {
         /* PRE KICKING STATE
          * stop charging
          * wait between stopping charging and kicking for safety
          */
+
         // disable charging
         charge_allowed_ = false;
 
@@ -410,8 +402,7 @@ ISR(TIMER0_COMP_vect) {
          */
 
         // set KICK pin
-	PORTD |= (_BV(MCU_RED));
-	//PORTC |= _BV(KICK_PIN);
+        PORTC |= _BV(PIN);
 
         timer_cnts_left_--;
     } else if (post_kick_cooldown_ >= 0) {
@@ -422,8 +413,7 @@ ISR(TIMER0_COMP_vect) {
          */
 
         // kick is done
-        PORTD &= ~(_BV(MCU_RED));
-	//PORTC &= ~_BV(KICK_PIN);
+        PORTC &= ~_BV(KICK_PIN);
 
         post_kick_cooldown_--;
     } else if (kick_wait_ >= 0) {
@@ -442,8 +432,7 @@ ISR(TIMER0_COMP_vect) {
          */
 
         // stop prescaled timer
-        //TCCR0 &= ~_BV(CS01);
-	TCCR0 &= 0b00;
+        TCCR0 &= ~_BV(CS01);
     }
 }
 
