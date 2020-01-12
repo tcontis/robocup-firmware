@@ -40,7 +40,7 @@ struct MODULE_META_DATA {
     // Time in sysclock ticks between module executions
     const uint32_t modulePeriod;
 
-    // Estimate in sysclock ticks of module runtime 
+    // Estimate in sysclock ticks of module runtime
     const int32_t moduleRunTime;
 
     GenericModule* module;
@@ -74,7 +74,7 @@ DebugInfo debugInfo;
 
 
 int main() {
-    HAL_Delay(100);
+    HAL_Delay(5000);
 
     std::shared_ptr<I2C> sharedI2C = std::make_shared<I2C>(SHARED_I2C_BUS);
     std::shared_ptr<SPI> fpgaKickerSPI = std::make_shared<SPI>(FPGA_KICKER_SPI_BUS, std::nullopt, 16'000'000);
@@ -85,8 +85,8 @@ int main() {
     // this will allow us to force the CS lines into the correct
     // position before doing anything like flashing other
     // devices on the bus
-    
-    HAL_Delay(100);
+
+    HAL_Delay(3000);
 
     std::shared_ptr<MCP23017> ioExpander = std::make_shared<MCP23017>(sharedI2C, 0x42);
     ioExpander->config(0x00FF, 0x00FF, 0x00FF);
@@ -98,27 +98,26 @@ int main() {
                   &kickerInfo,
                   &radioError);
 
-    FPGAModule fpga(fpgaKickerSPI,
-                    &motorCommand,
-                    &fpgaStatus,
-                    &motorFeedback);
+    // FPGAModule fpga(fpgaKickerSPI,
+    //                 &motorCommand,
+    //                 &fpgaStatus,
+    //                 &motorFeedback);
 
-    led.fpgaInitialized();
+    // led.fpgaInitialized();
 
-    RadioModule radio(&batteryVoltage,
-                      &fpgaStatus,
-                      &kickerInfo,
-                      &robotID,
-                      &kickerCommand,
-                      &motionCommand,
-                      &radioError);
+    // RadioModule radio(&batteryVoltage,
+    //                   &fpgaStatus,
+    //                   &kickerInfo,
+    //                   &robotID,
+    //                   &kickerCommand,
+    //                   &motionCommand,
+    //                   &radioError);
 
-    led.radioInitialized();
+    // led.radioInitialized();
 
     KickerModule kicker(dot_star_spi,
                         &kickerCommand,
                         &kickerInfo);
-
     led.kickerInitialized();
 
     BatteryModule battery(&batteryVoltage);
@@ -133,15 +132,15 @@ int main() {
                   &imuData);
 
     led.fullyInitialized();
-    
+
 
     std::vector<MODULE_META_DATA> moduleList;
-    
+
     uint64_t curTime = DWT_GetTick();
     moduleList.emplace_back(curTime, MotionControlModule::period, MotionControlModule::runtime, &motion);
     moduleList.emplace_back(curTime, IMUModule::period,           IMUModule::runtime,           &imu);
-    moduleList.emplace_back(curTime, FPGAModule::period,          FPGAModule::runtime,          &fpga);
-    moduleList.emplace_back(curTime, RadioModule::period,         RadioModule::runtime,         &radio);
+    // moduleList.emplace_back(curTime, FPGAModule::period,          FPGAModule::runtime,          &fpga);
+    // moduleList.emplace_back(curTime, RadioModule::period,         RadioModule::runtime,         &radio);
     moduleList.emplace_back(curTime, KickerModule::period,        KickerModule::runtime,        &kicker);
     moduleList.emplace_back(curTime, BatteryModule::period,       BatteryModule::runtime,       &battery);
     moduleList.emplace_back(curTime, RotaryDialModule::period,    RotaryDialModule::runtime,    &dial);
@@ -168,7 +167,7 @@ int main() {
             // then convertion to signed allows simple comparison
             if (static_cast<int32_t>(currentTime - module.nextRunTime) >= 0 &&
                 static_cast<int32_t>(loopEndTime - currentTime) >= module.moduleRunTime) {
-                
+
                 // todo change to loop start time
                 module.lastRunTime = loopStartTime;
                 module.nextRunTime = loopStartTime + module.modulePeriod;
@@ -190,6 +189,6 @@ int main() {
             //printf("WARNING: Overran super loop time\r\n");
             led.missedSuperLoop();
         }
-        
+
     }
 }
