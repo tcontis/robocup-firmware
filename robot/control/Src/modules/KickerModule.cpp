@@ -8,7 +8,7 @@ KickerModule::KickerModule(std::shared_ptr<SPI> spi,
                            KickerInfo *const kickerInfo)
     : kickerCommand(kickerCommand), kickerInfo(kickerInfo),
       prevKickTime(0), nCs(std::make_shared<DigitalOut>(KICKER_CS)), kicker(spi, nCs, KICKER_RST) {
-
+    HAL_Delay(10);
     kicker.flash(false, true);
 
     kickerInfo->isValid = false;
@@ -29,7 +29,7 @@ void KickerModule::entry(void) {
         kickerCommand->isValid = false;
 
         kicker.kickType(kickerCommand->shootMode == KickerCommand::ShootMode::KICK);
-        
+
         kicker.setChargeAllowed(true);
 
         switch (kickerCommand->triggerMode) {
