@@ -31,10 +31,11 @@ add_custom_target(kicker ALL
      DEPENDS kicker
      COMMENT "Copying the kicker board's binary over to the mbed"
  )
- 
+
 # F_CPU specifies the frequency (in Hz) of the cpu clock so that the delay functions work appropriately
 # the ATTiny13 has an internal 9.6MHz clock with the prescaler, don't scale back
 # change above to match ATTINY84A =====================================================================
 # to keep timing for neopixel
 # The -O2 turns on optimizations, which are required to use the delay_*() functions
+# list(APPEND CMAKE_C_FLAGS "-std=c11 -O2 -mmcu=${AVR_TARGET_ARCH} -DF_CPU=8000000")
 list(APPEND CMAKE_C_FLAGS "-std=c11 -O2 -mmcu=${AVR_TARGET_ARCH} -DF_CPU=8000000")

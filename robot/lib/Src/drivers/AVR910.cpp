@@ -288,18 +288,10 @@ bool AVR910::enableProgramming() {
 }
 
 void AVR910::poll(int high_low, char page_number, char page_offset) {
-    // Query the chip until it indicates it's ready by setting the busy bit to 0
-    int response = 0;
-    DWT_Delay(10);
-    nCs_->write(0);
-    do {
-        spi_->transmit(0xF0);
-        spi_->transmit(0x00);
-        spi_->transmit(0x00);
-        response = spi_->transmitReceive(0x00);
-    } while ((response & 0x01) != 0);
-    nCs_->write(0);
-    DWT_Delay(10);
+    // TODO: Replace this with a proper poll, where we read the correct byte
+    // until it's no longer 0xFF.
+    // For now, 5ms per page is reasonable considering we only have ~25 pages.
+    HAL_Delay(5);
 }
 
 int AVR910::readRegister(int reg) {

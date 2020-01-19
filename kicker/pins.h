@@ -6,6 +6,7 @@
 #define N_KICK_CS_PIN (PB4)
 #define KICK_MOSI_PIN (PB5)
 #define KICK_MISO_PIN (PB6)
+#define KICK_CLK_PIN  (PB7)
 
 /* hv monitoring */
 #define V_MONITOR_PIN (PA6)

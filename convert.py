@@ -28,7 +28,7 @@ if data is None:
 	exit(-1)
 
 num_bytes = len(data)
-hdr_sym = sys.argv[2].upper().replace(".", "_").replace("-", "_")
+hdr_sym = sys.argv[2].upper().replace(".", "_").replace("-", "_").replace("/", "_")
 
 print(str(sys.argv[1]) + " has " + str(num_bytes) + " bytes of data.")
 
