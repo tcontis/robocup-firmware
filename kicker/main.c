@@ -78,7 +78,7 @@ unsigned ball_sense_change_count_ = 0;
 uint32_t time = 0;
 
 // executes a command coming from SPI
-uint8_t execute_cmd(uint8_t, uint8_t);
+uint8_t execute_cmd(uint8_t);
 
 /*
  * Checks and returns if we're in the middle of a kick
@@ -114,7 +114,7 @@ void kick(uint8_t strength) {
 
   // start timer to enable the kick FSM processing interrupt
   // TCCR0 |= _BV(CS01);
-  TCCR0 |= 0b01;
+  // TCCR0 |= 0b010;
 }
 
 void init();
@@ -142,9 +142,12 @@ void main() {
   while (true) {
 
     if (_in_debug_mode) {
-      // PORTD |= (_BV(MCU_YELLOW));
-      char kick_db_pressed = !(PINC & _BV(DB_KICK_PIN));
-      char charge_db_pressed = !(PINC & _BV(DB_CHG_PIN));
+      /* PORTC &= ~(_BV(MCU_YELLOW)); */
+      char kick_db_pressed = !(PIND & _BV(DB_KICK_PIN));
+      char charge_db_pressed = !(PIND & _BV(DB_CHG_PIN));
+
+      PORTC |= _BV(MCU_RED);
+      PORTC &= ~(charge_db_pressed ? _BV(MCU_RED) : 0);
 
       if (!kick_db_down_ && kick_db_pressed)
         kick(255);
@@ -154,6 +157,8 @@ void main() {
 
       kick_db_down_ = kick_db_pressed;
       charge_db_down_ = charge_db_pressed;
+    } else {
+      /* PORTC &= ~(_BV(MCU_YELLOW)); */
     }
 
     if (PINA & _BV(BALL_SENSE_RX))
@@ -242,8 +247,8 @@ void init() {
   DDRC |= _BV(MCU_YELLOW);
   DDRC |= _BV(MCU_RED);
 
-  PORTC &= ~(_BV(MCU_YELLOW));
-  PORTC &= ~(_BV(MCU_RED));
+  PORTC |= _BV(MCU_YELLOW);
+  PORTC |= _BV(MCU_RED);
 
   // latch debug state
   _in_debug_mode = (PINC & _BV(DB_SWITCH));
@@ -269,15 +274,19 @@ void init() {
   DDRA &= ~(_BV(BALL_SENSE_RX));
 
   // configure debug
-  DDRC &=
-      ~(_BV(DB_SWITCH) | _BV(DB_CHG_PIN) | _BV(DB_KICK_PIN) | _BV(DB_CHIP_PIN));
+  DDRC &= ~(_BV(DB_SWITCH));
+  DDRD &=
+      ~(_BV(DB_CHG_PIN) | _BV(DB_KICK_PIN));
+  DDRB &= ~(_BV(DB_CHIP_PIN));
 
   // disable JTAG
   MCUCSR |= (1 << JTD);
   MCUCSR |= (1 << JTD);
   // configure SPI
-  SPCR = _BV(SPE) | _BV(SPIE);
-  SPCR &= ~(_BV(MSTR));
+  if (!_in_debug_mode) {
+      SPCR = _BV(SPE) | _BV(SPIE);
+      SPCR &= ~(_BV(MSTR));
+  }
 
   ///////////////////////////////////////////////////////////////////////////
   //  TIMER INITIALIZATION
@@ -320,28 +329,7 @@ void init() {
  * stored in SPDR. Writing a response also occurs using the SPDR register.
  */
 ISR(SPI_STC_vect) {
-  uint8_t recv_data = SPDR;
-
-  SPDR = 0xFF;
-  // increment our received byte count and take appropriate action
-  if (byte_cnt == 0) {
-    cur_command_ = recv_data;
-    SPDR = ACK;
-  } else if (byte_cnt == 1) {
-    // execute the currently set command with
-    // the newly given argument, set the response
-    // buffer to our return value
-    SPDR = execute_cmd(cur_command_, recv_data);
-  } else if (byte_cnt == 2) {
-    // return kicker state
-    SPDR = ((ball_sensed_ ? 1 : 0) << BALL_SENSE_FIELD) |
-           ((charge_commanded_ ? 1 : 0) << CHARGE_FIELD) |
-           ((kick_on_breakbeam_ ? 1 : 0) << KICK_ON_BREAKBEAM_FIELD) |
-           ((is_kicking() ? 1 : 0) << KICKING_FIELD);
-  }
-  int MAX_NUM_BYTES = 4;
-  byte_cnt++;
-  byte_cnt %= MAX_NUM_BYTES;
+  SPDR = execute_cmd(SPDR);
 }
 
 /*
@@ -410,8 +398,8 @@ ISR(TIMER0_COMP_vect) {
      */
 
     // set KICK pin
-    PORTC |= (_BV(MCU_RED));
-    // PORTC |= _BV(KICK_PIN);
+    PORTC &= ~(_BV(MCU_RED));
+    PORTC |= _BV(KICK_PIN);
 
     timer_cnts_left_--;
   } else if (post_kick_cooldown_ >= 0) {
@@ -422,8 +410,8 @@ ISR(TIMER0_COMP_vect) {
      */
 
     // kick is done
-    PORTC &= ~(_BV(MCU_RED));
-    // PORTC &= ~_BV(KICK_PIN);
+    PORTC |= _BV(MCU_RED);
+    PORTC &= ~_BV(KICK_PIN);
 
     post_kick_cooldown_--;
   } else if (kick_wait_ >= 0) {
@@ -453,54 +441,30 @@ ISR(TIMER0_COMP_vect) {
  * WARNING: This will be called from an interrupt service routines, keep it
  * short!
  */
-uint8_t execute_cmd(uint8_t cmd, uint8_t arg) {
+uint8_t execute_cmd(uint8_t cmd) {
   // if we don't change ret_val by setting it to voltage or
   // something, then we'll just return the command we got as
   // an acknowledgement.
-  uint8_t ret_val = BLANK;
+  bool allow_charge = !!(cmd & (1 << 4));
+  uint8_t kick_power = (cmd & 0xF) << 4;
+  uint8_t kick_activation = cmd & (3 << 5);
+  bool use_chip = !!(cmd & (1 << 7));
 
-  switch (cmd) {
-  case KICK_BREAKBEAM_CMD:
-    kick_on_breakbeam_ = true;
-    kick_on_breakbeam_strength_ = arg;
-    break;
-
-  case KICK_BREAKBEAM_CANCEL_CMD:
-    kick_on_breakbeam_ = false;
-    kick_on_breakbeam_strength_ = 0;
-    break;
-
-  case KICK_IMMEDIATE_CMD:
-    kick(arg);
-    break;
-
-  case SET_CHARGE_CMD:
-    // set state based on argument
-    if (arg == ON_ARG) {
-      ret_val = 1;
-      charge_commanded_ = true;
-    } else if (arg == OFF_ARG) {
-      ret_val = 0;
-      charge_commanded_ = false;
-    }
-    break;
-
-  case GET_VOLTAGE_CMD:
-    ret_val = last_voltage_;
-    break;
-
-  case PING_CMD:
-    ret_val = 0xFF;
-    // do nothing, ping is just a way to check if the kicker
-    // is connected by checking the returned command ack from
-    // earlier.
-    break;
-
-  default:
-    // return error value to show arg wasn't recognized
-    ret_val = 0xCC;
-    break;
+  if (allow_charge) {
+    charge_commanded_ = true;
+  } else {
+    charge_commanded_ = false;
   }
 
-  return ret_val;
+  if (kick_activation == KICK_ON_BREAKBEAM) {
+    kick_on_breakbeam_ = true;
+    kick_on_breakbeam_strength_ = kick_power;
+  } else if (kick_activation == KICK_IMMEDIATE) {
+    kick(kick_power);
+  } else if (kick_activation == CANCEL_KICK) {
+    kick_on_breakbeam_ = false;
+    kick_on_breakbeam_strength_ = 0;
+  }
+
+  return (ball_sensed_ << 7) | (VOLTAGE_MASK & (last_voltage_ >> 1));
 }

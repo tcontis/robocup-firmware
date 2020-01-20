@@ -167,11 +167,11 @@ void KickerBoard::service() {
     DWT_Delay(50);
     _nCs->write(1);
 
-
     _current_voltage = (resp & VOLTAGE_MASK) * VOLTAGE_SCALE;
 
     _ball_sensed = resp & BREAKBEAM_TRIPPED;
 
+    printf("Voltage: %d\r\n", _current_voltage);
 
     // Assume healthy if we get some voltage back
     _is_healthy = _current_voltage > 0;
