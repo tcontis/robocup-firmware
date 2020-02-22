@@ -3,6 +3,7 @@
 #include "SPI.hpp"
 #include "DigitalOut.hpp"
 
+#define READ_BIT (1 << 7)
 
 /******************************************************************************
 LSM9DS1_Registers.h
@@ -113,6 +114,7 @@ public:
     LSM9DS1(std::shared_ptr<SPI> spi, PinName cs);
 
     void init();
+    float gyro_z(); // Rotation about z axis in RAD/S
 
 private:
     void chip_select(bool active);
