@@ -109,6 +109,42 @@ Distributed as-is; no warranty is given.
 #define WHO_AM_I_AG_RSP		0x68
 #define WHO_AM_I_M_RSP		0x3D
 
+/******************************************************************************
+LSM9DS1_Types.h
+SFE_LSM9DS1 Library - LSM9DS1 Types and Enumerations
+Jim Lindblom @ SparkFun Electronics
+Original Creation Date: April 21, 2015
+https://github.com/sparkfun/LSM9DS1_Breakout
+This file defines all types and enumerations used by the LSM9DS1 class.
+Development environment specifics:
+	IDE: Arduino 1.6.0
+	Hardware Platform: Arduino Uno
+	LSM9DS1 Breakout Version: 1.0
+This code is beerware; if you see me (or any other SparkFun employee) at the
+local, and you've found our code helpful, please buy us a round!
+Distributed as-is; no warranty is given.
+******************************************************************************/
+
+// gyro_scale defines the possible full-scale ranges of the gyroscope:
+enum gyro_scale
+{
+    G_SCALE_245DPS = 0,  // 00:  245 degrees per second
+    G_SCALE_500DPS = 1,  // 01:  500 dps
+    G_SCALE_2000DPS = 3, // 11:  2000 dps
+};
+
+// gyro_odr defines all possible data rate/bandwidth combos of the gyro:
+enum gyro_odr
+{
+    G_ODR_PD,  // Power down (0)
+    G_ODR_149, // 14.9 Hz (1)
+    G_ODR_595, // 59.5 Hz (2)
+    G_ODR_119, // 119 Hz (3)
+    G_ODR_238, // 238 Hz (4)
+    G_ODR_476, // 476 Hz (5)
+    G_ODR_952  // 952 Hz (6)
+};
+
 class LSM9DS1{
 public:
     LSM9DS1(std::shared_ptr<SPI> spi, PinName cs);
@@ -123,5 +159,7 @@ private:
 
     std::shared_ptr<SPI> _spi; //SPI bus
     DigitalOut _cs; //Chip select pin
+
+    bool cs_active = false;
 
 };
