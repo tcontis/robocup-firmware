@@ -3,7 +3,7 @@
 #include "SPI.hpp"
 #include "GenericModule.hpp"
 #include "MicroPackets.hpp" 
-#include "drivers/MPU6050.h"
+#include "drivers/LSM9DS1.hpp"
 #include "LockedStruct.hpp"
 #include <memory>
 

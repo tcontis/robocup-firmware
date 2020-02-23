@@ -6,7 +6,7 @@
 
 IMUModule::IMUModule(std::shared_ptr<SPI> spi, LockedStruct<IMUData>& imuData)
     : GenericModule(kPeriod, "imu", kPriority),
-      imu(spi), imuData(imuData, p17) {
+      imu(spi, p17), imuData(imuData) {
     auto imuDataLock = imuData.unsafe_value();
     imuDataLock->isValid = false;
     imuDataLock->lastUpdate = 0;
@@ -18,22 +18,15 @@ IMUModule::IMUModule(std::shared_ptr<SPI> spi, LockedStruct<IMUData>& imuData)
 }
 
 void IMUModule::start() {
-    imu.initialize();
+    imu.init();
 
     printf("INFO: IMU initialized\r\n");
     imuData.lock()->initialized = true;
 }
 
 void IMUModule::entry(void) {
-    // IMU removed
-    // Occasionally the MPU6050 holds the data line low
-    // causing a consistent timeout on the i2c bus
-    // We tried to recover the bus by clocking out a ton
-    // of just clock signals, but it did not seem to solve
-    // the problem
-    // A new imu is on the docket
-    imuDataLock->omegas[2] = imu.gyro_Z();
-    imuDataLock->isValid = true;
-    imuDataLock->lastUpdate = HAL_GetTick();
+    imuData.lock()->omegas[2] = imu.gyro_z();
+    imuData.lock()->isValid = true;
+    imuData.lock()->lastUpdate = HAL_GetTick();
 
 }

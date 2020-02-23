@@ -2,6 +2,7 @@
 
 #include "SPI.hpp"
 #include "DigitalOut.hpp"
+#include <memory>
 
 #define READ_BIT (1 << 7)
 
