@@ -1,6 +1,6 @@
 #pragma once
 
-#include "I2C.hpp"
+#include "SPI.hpp"
 #include "GenericModule.hpp"
 #include "MicroPackets.hpp" 
 #include "drivers/MPU6050.h"
@@ -14,13 +14,13 @@ public:
     static constexpr std::chrono::milliseconds kPeriod{static_cast<int>(1000 / kFrequency)};
     static constexpr int kPriority = 3;
 
-    IMUModule(std::shared_ptr<I2C> sharedI2C, LockedStruct<IMUData>& imuData);
+    IMUModule(std::shared_ptr<SPI> spi, LockedStruct<IMUData>& imuData);
 
     void start() override;
 
     void entry() override;
 
 private:
-    MPU6050 imu;
+    LSM9DS1 imu;
     LockedStruct<IMUData>& imuData;
 };

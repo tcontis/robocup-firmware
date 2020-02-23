@@ -61,5 +61,5 @@ void LSM9DS1::write_register(uint8_t address, uint8_t value){
 
 void LSM9DS1::chip_select(bool active){
     cs_active = active;
-    cs_pin.write(active);
+    _cs_pin.write(active);
 }
