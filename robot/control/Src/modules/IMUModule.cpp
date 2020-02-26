@@ -3,10 +3,11 @@
 #include <cmath>
 #include "PinDefs.hpp"
 
+#include "LockedStruct.hpp"
 
-IMUModule::IMUModule(std::shared_ptr<SPI> spi, LockedStruct<IMUData>& imuData)
+IMUModule::IMUModule(LockedStruct<SPI>& spi, LockedStruct<IMUData>& imuData)
     : GenericModule(kPeriod, "imu", kPriority),
-      imu(spi, p17), imuData(imuData) {
+      imu(spi, p18), imuData(imuData) {
     auto imuDataLock = imuData.unsafe_value();
     imuDataLock->isValid = false;
     imuDataLock->lastUpdate = 0;

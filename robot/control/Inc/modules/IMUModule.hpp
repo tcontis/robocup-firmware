@@ -14,7 +14,7 @@ public:
     static constexpr std::chrono::milliseconds kPeriod{static_cast<int>(1000 / kFrequency)};
     static constexpr int kPriority = 3;
 
-    IMUModule(std::shared_ptr<SPI> spi, LockedStruct<IMUData>& imuData);
+    IMUModule(LockedStruct<SPI>& spi, LockedStruct<IMUData>& imuData);
 
     void start() override;
 
